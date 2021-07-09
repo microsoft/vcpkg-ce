@@ -74,7 +74,7 @@ While the usage of `ce` is the same on all platforms, the installation/loading/r
 |  `cache`      | manages the download cache |
 |  `clean`      | cleans up |
 
-Use `ce <command> --help` to get detailed usage instructions
+Use `ce <command> --help` to get detailed usage instructions.
 
 ## Glossary
 
