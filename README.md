@@ -21,7 +21,7 @@ It
 
 ## Security Considerations
 
-The `ce` tool is an automation convenience, and we're working towards a solid solition that can be used to control the developer supply chain.
+The `ce` tool is an automation convenience, and we're working towards a solid solution that can be used to control the developer supply chain.
 
 Consequently, it currently only supports downloading from `HTTPS`, and `SHA256` hashes are required in the metadata file to offer some level of assurity that the files downloaded are correct.
 
