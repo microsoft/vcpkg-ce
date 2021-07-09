@@ -23,7 +23,7 @@ It
 
 The `ce` tool is an automation convenience, and we're working towards a solid solution that can be used to control the developer supply chain.
 
-Consequently, it currently only supports downloading from `HTTPS`, and `SHA256` hashes are required in the metadata file to offer some level of assurity that the files downloaded are correct.
+Consequently, it currently only supports downloading from `HTTPS`. All artifacts must have `SHA256` hashes that are checked for assurance that the files downloaded are correct.
 
 
 ## Installation
