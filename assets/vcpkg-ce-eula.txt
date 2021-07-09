@@ -95,7 +95,7 @@ IF YOU COMPLY WITH THESE LICENSE TERMS, YOU HAVE THE RIGHTS BELOW.
 
     - provide the software as a stand-alone offering or combined with any of
       your applications for others to use, or transfer the software or this
-      agreement to any third part.
+      agreement to any third party.
 
 8.  EXPORT RESTRICTIONS. You must comply with all domestic and international
     export laws and regulations that apply to the software, which include
