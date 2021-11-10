@@ -40,7 +40,7 @@ While the usage of `ce` is the same on all platforms, the installation/loading/r
 |-----------------|-----------------------------------------------------|-----------------------|---------------------------------|
 | **PowerShell/Pwsh** |`iex (iwr -useb aka.ms/install-ce.ps1)`              |` . ~/.ce/ce`          | `rmdir -recurse ~/.ce`          |
 | **Linux/OSX**       |`. <(curl aka.ms/install-ce.sh -L)`                  |` . ~/.ce/ce`          | `rm -rf ~/.ce`                  |
-| **CMD Shell**       |`curl -LO aka.ms/install-ce.cmd && ./install-ce.cmd` |`%USERPROFILE%\.ce\ce` | `rmdir /s /q %USERPROFILE%\.ce` |
+| **CMD Shell**       |`curl -LO aka.ms/install-ce.cmd && .\install-ce.cmd` |`%USERPROFILE%\.ce\ce` | `rmdir /s /q %USERPROFILE%\.ce` |
 | using node 14.17.0+/NPM | `npm install -g https://aka.ms/vcpkg-ce.tgz` | _same as above per platform_ | _same as above per platform_ | 
 
 <hr>
