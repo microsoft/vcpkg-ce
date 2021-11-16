@@ -1,0 +1,55 @@
+{
+  "name": "vcpkg-ce.test",
+  "version": "0.6.0",
+  "description": "ce test project",
+  "directories": {
+    "doc": "docs"
+  },
+  "engines": {
+    "node": ">=10.12.0"
+  },
+  "scripts": {
+    "eslint-fix": "eslint  . --fix --ext .ts",
+    "eslint": "eslint  . --ext .ts",
+    "clean": "shx rm -rf dist .rush && shx echo Done",
+    "build": "tsc -p .",
+    "watch": "tsc -p . --watch",
+    "prepare": "npm run build",
+    "test-ci": "npm run build && npm run test",
+    "test": "node --harmony ./node_modules/mocha/bin/mocha --config ./mocha-config.yaml --timeout 200000",
+    "watch-test": "node --harmony ./node_modules/mocha/bin/mocha --config ./mocha-config.yaml --timeout 200000 --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Microsoft/vcpkg-ce.git"
+  },
+  "keywords": [
+    "ce"
+  ],
+  "author": "Microsoft",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Microsoft/vcpkg-ce/issues"
+  },
+  "homepage": "https://github.com/Microsoft/vcpkg-ce#readme",
+  "readme": "https://github.com/Microsoft/vcpkg-ce/blob/master/readme.md",
+  "devDependencies": {
+    "@types/node": "14.14.22",
+    "mocha": "9.0.2",
+    "@types/mocha": "8.2.3",
+    "@typescript-eslint/eslint-plugin": "^4.31.1",
+    "@typescript-eslint/parser": "^4.31.1",
+    "eslint-plugin-notice": "0.9.10",
+    "eslint": "^7.32.0",
+    "@types/semver": "~7.3.4",
+    "typescript": "4.4.3",
+    "source-map-support": "~0.5.19",
+    "shx": "0.3.3"
+  },
+  "dependencies": {
+    "@microsoft/vcpkg-ce": "~0.6.0",
+    "yaml": "2.0.0-8",
+    "semver": "~7.3.4",
+    "txtgen": "2.2.8"
+  }
+}

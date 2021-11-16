@@ -1,0 +1,252 @@
+name: $(Date:yyyyMMdd)$(Rev:.r)-$(SourceBranchName)
+
+parameters:
+- name: SignTypeOverride
+  displayName: Signing Type Override
+  type: string
+  default: default
+  values:
+  - default
+  - test
+  - real
+
+trigger:
+  branches:
+    include:
+      - main
+  tags:
+    include:
+      - '*'
+
+pr:
+- main
+
+pool:
+  name: VSEngSS-MicroBuild2019-1ES
+
+variables:
+  # MicroBuild requires TeamName to be set.
+  TeamName: C++ Cross Platform and Cloud
+  # MicroBuild pollutes the staging directory, so we use our own subdirectory.
+  OutputDirectory: $(Build.StagingDirectory)/out
+  # If the user didn't override the signing type, then only real-sign on main.
+  ${{ if ne(parameters.SignTypeOverride, 'default') }}:
+    SignType: ${{ parameters.SignTypeOverride }}
+  ${{ if and(eq(parameters.SignTypeOverride, 'default'), or(eq(variables['Build.SourceBranchName'], 'main'), startsWith(variables['Build.SourceBranch'], 'refs/tags'))) }}:
+    SignType: real
+  ${{ if and(eq(parameters.SignTypeOverride, 'default'), not(or(eq(variables['Build.SourceBranchName'], 'main'), startsWith(variables['Build.SourceBranch'], 'refs/tags')))) }}:
+    SignType: test
+  # This variable will be expanded later and allows us to deploy to the vcpkg-ce repo.
+  GIT_SSH_COMMAND: ssh -i "$(githubDeployKey.secureFilePath)"
+  TagName: $[replace(variables['Build.SourceBranch'], 'refs/tags/', '')]
+
+steps:
+  - task: MicroBuildSigningPlugin@3
+    displayName: Install MicroBuild Signing
+    inputs:
+      signType: $(SignType)
+      zipSources: false
+
+  # Run these scanners first so that they don't detect issues in dependencies.
+  # Failures won't break the build until "Check for compliance errors" step.
+  - task: securedevelopmentteam.vss-secure-development-tools.build-task-credscan.CredScan@2
+    displayName: Run CredScan
+    inputs:
+      toolMajorVersion: V2
+  - task: securedevelopmentteam.vss-secure-development-tools.build-task-policheck.PoliCheck@1
+    displayName: Run PoliCheck
+    inputs:
+      targetType: F
+      targetArgument: $(Build.SourcesDirectory)
+
+  # Build and test the project.
+  - task: UseNode@1
+    displayName: Use Node 16 or later
+    inputs:
+      version: "16.x"
+  - script: npm install -g @microsoft/rush
+    displayName: Install Rush
+  - script: rush update
+    displayName: Install dependencies
+  - script: rush lint
+    displayName: Check for linting errors
+  - script: rush rebuild
+    displayName: Build all packages
+  - script: rush test
+    displayName: Run tests
+
+  # Collect all dependencies. Output will be placed in the ./common/deploy directory.
+  - script: |
+      rush set-versions
+      node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2)); console.log(``set asset version to `${p.version}``);"
+    displayName: Set package versions
+  - script: rush deploy
+    displayName: Collect dependencies
+
+  - task: ComponentGovernanceComponentDetection@0
+    displayName: Detect components
+    inputs:
+      ignoreDirectories: common/temp
+
+  # Sign JavaScript and PowerShell files.
+  - task: NuGetCommand@2
+    displayName: Restore MicroBuild Core
+    inputs:
+      command: custom
+      arguments: restore .scripts/signing/SignFiles.proj -PackagesDirectory .scripts/signing/packages
+  - task: MSBuild@1
+    displayName: Sign individual files
+    inputs:
+      solution: .scripts/signing/SignFiles.proj
+      msbuildArguments: /p:SignType=$(SignType)
+
+  # Inject the NOTICE file. This must run after component detection.
+  - task: msospo.ospo-extension.8d7f9abb-6896-461d-9e25-4f74ed65ddb2.notice@0
+    displayName: Generate NOTICE file
+    inputs:
+      outputfile: $(Build.SourcesDirectory)/common/deploy/NOTICE.txt
+
+  # Create pack and extract files to staging directory.
+  - script: npm pack $(Build.SourcesDirectory)/common/deploy
+    displayName: Create pack
+  - powershell: mkdir $(OutputDirectory); copy vcpkg-ce-*.tgz $(OutputDirectory)/ce.tgz
+    displayName: Copy pack
+  - task: CopyFiles@2
+    displayName: Copy bootstrapping scripts
+    inputs:
+      sourceFolder: $(Build.SourcesDirectory)/common/deploy/scripts
+      contents: |
+        ce
+        ce.ps1
+      targetFolder: $(OutputDirectory)
+  - powershell: copy $(OutputDirectory)/ce.ps1 $(OutputDirectory)/ce.cmd
+    displayName: Duplicate PowerShell bootstrapper for CMD
+
+  # Add detached signatures for the pack and bootstrapping scripts.
+  - powershell: New-FileCatalog -Path .\ce,.\ce.ps1,.\ce.cmd,.\ce.tgz -CatalogFilePath .\signature.cat -CatalogVersion 2.0
+    displayName: Create catalog for detached signatures
+    workingDirectory: $(OutputDirectory)
+  - powershell: New-FileCatalog -Path .\ce.tgz -CatalogFilePath .\ce.tgz.cat -CatalogVersion 2.0
+    displayName: Create standalone tgz catalog
+    workingDirectory: $(OutputDirectory)
+  - powershell: copy $(OutputDirectory)/ce.tgz $(OutputDirectory)/ce.tgz.asc
+    displayName: Duplicate pack for PGP signing
+  - powershell: copy $(OutputDirectory)/ce $(OutputDirectory)/ce.asc
+    displayName: Duplicate Linux bootstrapper
+  - task: MSBuild@1
+    displayName: Sign catalogs
+    inputs:
+      solution: .scripts/signing/SignDetached.proj
+      msbuildArguments: /p:SignType=$(SignType) /p:BaseOutputDirectory=$(OutputDirectory)
+
+  - publish: $(OutputDirectory)
+    artifact: vcpkg-ce
+    displayName: Publish artifacts
+
+  # Do final compliance checks.
+  - task: securedevelopmentteam.vss-secure-development-tools.build-task-postanalysis.PostAnalysis@1
+    displayName: Check for compliance errors
+    # To avoid spirious warnings about missing logs, explicitly declare what we scanned.
+    inputs:
+      CredScan: true
+      PoliCheck: true
+  # Trust Services Automation (TSA) can automatically open bugs for compliance issues.
+  # https://www.1eswiki.com/wiki/Trust_Services_Automation_(TSA)
+  - task: securedevelopmentteam.vss-secure-development-tools.build-task-uploadtotsa.TSAUpload@1
+    displayName: Upload logs to TSA
+    inputs:
+      tsaVersion: TsaV2
+      codebase: NewOrUpdate
+      codeBaseName: vcpkg-ce
+      notificationAlias: embeddeddev@microsoft.com
+      instanceUrlForTsaV2: DEVDIV
+      projectNameDEVDIV: DevDiv
+      areaPath: DevDiv\Cpp Developer Experience\Cross Platform\Embedded
+      iterationPath: DevDiv
+      # To avoid spurious warnings about missing logs, explicitly declare what we don't upload.
+      uploadAPIScan: false
+      uploadBinSkim: false
+      uploadFortifySCA: false
+      uploadFxCop: false
+      uploadModernCop: false
+      uploadPREfast: false
+      uploadRoslyn: false
+      uploadTSLint: false
+    condition: eq(variables['Build.SourceBranchName'], 'main')
+
+  # This task won't actually publish if the release isn't tagged.
+  # Disabled for now because there's no reason to publish to both the internal
+  # and public repos.
+  # - task: GitHubRelease@0
+  #   displayName: Publish to internal repo
+  #   inputs:
+  #     gitHubConnection: embeddedbot
+  #     repositoryName: microsoft/vcpkg-ce
+  #     action: create
+  #     target: $(Build.SourceVersion)
+  #     tagSource: auto
+  #     assets: |
+  #       $(OutputDirectory)\ce
+  #       $(OutputDirectory)\ce.ps1
+  #       $(OutputDirectory)\ce.cmd
+  #       $(OutputDirectory)\ce.tgz
+  #       $(OutputDirectory)\signature.cat
+  #       $(OutputDirectory)\ce.tgz.asc
+  #       $(OutputDirectory)\ce.tgz.cat
+  #       $(OutputDirectory)\ce.asc
+  #     isPreRelease: false
+  #   condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))
+
+  # The following tasks publish to the issue-only public vcpkg-ce repo. We
+  # have a deploy key stored as a secret file in Azure Pipelines which is used
+  # to authenticate for pushing a tag and creating a release.
+  - task: DownloadSecureFile@1
+    displayName: Download deploy key
+    name: githubDeployKey
+    inputs:
+      secureFile: id_vcpkgce
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))
+  # GitHub has a large, regularly changing set of IP address, so ignore the
+  # hostname and allow anything with the right key.
+  # https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/about-githubs-ip-addresses
+  # This public key should have the well-known fingerprint documented below.
+  # SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8
+  # https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
+  - script: mkdir %USERPROFILE%\.ssh && echo * ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==>>%USERPROFILE%\.ssh\known_hosts
+    displayName: Store GitHub public key
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))
+  - script: git clone git@github.com:microsoft/vcpkg-ce.git
+    displayName: Clone deployment repo
+    workingDirectory: $(Pipeline.Workspace)
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))
+  - script: git -c user.email=embeddedbot@microsoft.com -c user.name="Embedded Bot" tag -a $(TagName) -m "vcpkg-ce release $(TagName)" && git push origin $(TagName)
+    displayName: Push release tag
+    workingDirectory: $(Pipeline.Workspace)/vcpkg-ce
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))
+  - task: GitHubRelease@0
+    displayName: Publish to public repo
+    inputs:
+      gitHubConnection: embeddedbot
+      repositoryName: microsoft/vcpkg-ce
+      action: create
+      # We don't care what commit the releases are associated with in the
+      # issue-only repo, so just use the SHA of the initial commit. The task
+      # requires this parameter, but the actual release will end up using the
+      # SHA of the tag.
+      target: 70680994ce17917a99788b794a26347c35c805c9
+      tagSource: manual
+      tag: $(TagName)
+      assets: |
+        $(OutputDirectory)\ce
+        $(OutputDirectory)\ce.ps1
+        $(OutputDirectory)\ce.cmd
+        $(OutputDirectory)\ce.tgz
+        $(OutputDirectory)\signature.cat
+        $(OutputDirectory)\ce.tgz.asc
+        $(OutputDirectory)\ce.tgz.cat
+        $(OutputDirectory)\ce.asc
+      isPreRelease: false
+    condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))
+
+  - task: MicroBuildCleanup@1
+    displayName: Clean up MicroBuild
