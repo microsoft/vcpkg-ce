@@ -35,7 +35,9 @@ jobs:
       - name: use Rush to update/rebuild/test/lint
         shell: bash {0}
         run: |
-            npx @microsoft/rush update
+            npm install -g @microsoft/rush
+
+            rush update
             rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
 
             # set the version of the ce package based on the pkgversion+git commit number
@@ -44,17 +46,17 @@ jobs:
             export PKG_VERSION=`node -p "require('./ce/package.json').version"`
             echo "The version for this build is : $PKG_VERSION"
 
-            npx @microsoft/rush rebuild
+            rush rebuild
             # rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
 
-            # npx @microsoft/rush test
+            # rush test
             # rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
             pushd test
             npm test
             rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
             popd
 
-            npx @microsoft/rush lint
+            rush lint
             rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
 
             git diff
