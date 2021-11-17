@@ -138,7 +138,7 @@ steps:
   - task: CopyFiles@2
     displayName: Copy bootstrapping scripts
     inputs:
-      sourceFolder: $(Build.SourcesDirectory)/s/common/deploy/scripts
+      sourceFolder: $(Build.SourcesDirectory)/common/deploy/scripts
       contents: |
         ce
         ce.ps1
