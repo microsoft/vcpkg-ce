@@ -219,7 +219,8 @@ steps:
   - powershell: |
       $PKG_VERSION=(node -p "require('./ce/package.json').version")
       echo "The version for this build is $PKG_VERSION"
-      git -c user.email=embeddedbot@microsoft.com -c user.name="Embedded Bot" tag -a $PKG_VERSION -m "vcpkg-ce release $PKG_VERSION" && git push origin $PKG_VERSION
+      git -c user.email=embeddedbot@microsoft.com -c user.name="Embedded Bot" tag -a $PKG_VERSION -m "vcpkg-ce release $PKG_VERSION"
+      git push origin $PKG_VERSION
     displayName: Push release tag
     workingDirectory: $(Pipeline.Workspace)/s
 
