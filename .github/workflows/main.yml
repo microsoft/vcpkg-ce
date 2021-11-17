@@ -44,6 +44,7 @@ jobs:
             rush set-versions
             node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2));"
             export PKG_VERSION=$(node -p "require('./ce/package.json').version")
+            # in a PR job, this will always give the version as Major.Minor.0
             echo "The version for this build is : $PKG_VERSION"
 
             rush rebuild
