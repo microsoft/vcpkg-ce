@@ -118,11 +118,11 @@ steps:
     displayName: Restore MicroBuild Core
     inputs:
       command: custom
-      arguments: restore vcpkg-ce/.scripts/signing/SignFiles.proj -PackagesDirectory vcpkg-ce/.scripts/signing/packages
+      arguments: restore .scripts/signing/SignFiles.proj -PackagesDirectory .scripts/signing/packages
   - task: MSBuild@1
     displayName: Sign individual files
     inputs:
-      solution: vcpkg-ce/.scripts/signing/SignFiles.proj
+      solution: .scripts/signing/SignFiles.proj
       msbuildArguments: /p:SignType=$(SignType)
 
   # Inject the NOTICE file. This must run after component detection.
