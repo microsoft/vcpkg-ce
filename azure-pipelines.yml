@@ -72,7 +72,7 @@ steps:
     displayName: Check for linting errors
   - script: |
       rush set-versions
-      node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2)); console.log(``set asset version to `${p.version}``);"
+      node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2));"
       export PKG_VERSION=$(node -p "require('./ce/package.json').version")
       echo "The version for this build is : $PKG_VERSION"
       # set the 'TagName' task variable (instead of picking up the tag from the repo)
