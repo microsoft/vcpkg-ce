@@ -14,12 +14,6 @@ trigger:
   branches:
     include:
       - main
-  tags:
-    include:
-      - '*'
-
-pr:
-- main
 
 pool:
   name: VSEngSS-MicroBuild2019-1ES
