@@ -86,6 +86,9 @@ steps:
     inputs:
       ignoreDirectories: common/temp
 
+  - task: NuGetAuthenticate@0
+    displayName: Authenticate NuGet
+
   # Sign JavaScript and PowerShell files.
   - task: NuGetCommand@2
     displayName: Restore MicroBuild Core
