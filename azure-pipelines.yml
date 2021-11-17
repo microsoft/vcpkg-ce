@@ -43,8 +43,6 @@ steps:
     displayName: Store GitHub public key
 
   - script: |
-      dir $(Pipeline.Workspace)
-      dir $(Pipeline.Workspace)\s
       rmdir /s /q  $(Pipeline.Workspace)\s
       git clone git@github.com:microsoft/vcpkg-ce.git  $(Pipeline.Workspace)\s
     displayName: Clone deployment repo
@@ -129,10 +127,10 @@ steps:
   - task: msospo.ospo-extension.8d7f9abb-6896-461d-9e25-4f74ed65ddb2.notice@0
     displayName: Generate NOTICE file
     inputs:
-      outputfile: $(Build.SourcesDirectory)/s/common/deploy/NOTICE.txt
+      outputfile: $(Build.SourcesDirectory)/common/deploy/NOTICE.txt
 
   # Create pack and extract files to staging directory.
-  - script: npm pack $(Build.SourcesDirectory)/s/common/deploy
+  - script: npm pack $(Build.SourcesDirectory)/common/deploy
     displayName: Create pack
   - powershell: mkdir $(OutputDirectory); copy vcpkg-ce-*.tgz $(OutputDirectory)/ce.tgz
     displayName: Copy pack
