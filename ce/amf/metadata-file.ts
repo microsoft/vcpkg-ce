@@ -29,7 +29,7 @@ export class MetadataFile extends BaseMap implements Profile {
   readonly context: DocumentContext;
   session!: Session;
 
-  private constructor(protected readonly document: Document.Parsed, public readonly filename: string, public lineCounter: LineCounter) {
+  private constructor(protected document: Document.Parsed, public readonly filename: string, public lineCounter: LineCounter) {
     super(<YAMLMap<string, any>><any>document.contents);
     this.context = <DocumentContext>{
       filename,
@@ -45,13 +45,14 @@ export class MetadataFile extends BaseMap implements Profile {
   }
 
   static async parseMetadata(uri: Uri, session: Session): Promise<MetadataFile> {
-    const lc = new LineCounter();
-    const content = await uri.readUTF8();
-    return new MetadataFile(parseDocument(content, { prettyErrors: false, lineCounter: lc, strict: true }), uri.toString(), lc).init(session);
+    return MetadataFile.parseConfiguration(uri.path, await uri.readUTF8(), session);
   }
 
   static async parseConfiguration(filename: string, content: string, session: Session): Promise<MetadataFile> {
     const lc = new LineCounter();
+    if (!content || content === 'null') {
+      content = '{\n}';
+    }
     const doc = parseDocument(content, { prettyErrors: false, lineCounter: lc, strict: true });
     return new MetadataFile(doc, filename, lc).init(session);
   }
@@ -102,6 +103,9 @@ export class MetadataFile extends BaseMap implements Profile {
         break;
       default:
         throw new Error(`Unsupported file type ${extname(uri.path)}`);
+    }
+    if (!content || content === 'null') {
+      content = '{\n}';
     }
     await uri.writeUTF8(content);
   }
@@ -199,8 +203,8 @@ export class MetadataFile extends BaseMap implements Profile {
 
   /** @internal */override assert(recreateIfDisposed = false, node = this.node): asserts this is Yaml<YAMLDictionary> & { node: YAMLDictionary } {
     if (!isMap(this.node)) {
-      this.node = <YAMLMap<string, any>><any>parseDocument('{ }', { prettyErrors: false, lineCounter: this.context.lineCounter, strict: true }).contents;
+      this.document = parseDocument('{\n}', { prettyErrors: false, lineCounter: this.context.lineCounter, strict: true });
+      this.node = <YAMLMap<string, any>><any>this.document.contents;
     }
-
   }
 }
