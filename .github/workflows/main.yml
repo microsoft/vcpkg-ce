@@ -35,20 +35,29 @@ jobs:
       - name: use Rush to update/rebuild/test/lint
         shell: bash {0}
         run: |
-            npx @microsoft/rush update
+            npm install -g @microsoft/rush
+
+            rush update
             rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
 
-            npx @microsoft/rush rebuild
+            # set the version of the ce package based on the pkgversion+git commit number
+            rush set-versions
+            node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2));"
+            export PKG_VERSION=$(node -p "require('./ce/package.json').version")
+            # in a PR job, this will always give the version as Major.Minor.0
+            echo "The version for this build is : $PKG_VERSION"
+
+            rush rebuild
             # rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
 
-            # npx @microsoft/rush test
+            # rush test
             # rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
             pushd test
             npm test
             rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
             popd
 
-            npx @microsoft/rush lint
+            rush lint
             rc=$?; if [ $rc -ne 0 ]; then exit $rc ; fi
 
             git diff
