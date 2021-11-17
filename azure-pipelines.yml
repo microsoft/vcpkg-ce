@@ -32,9 +32,9 @@ variables:
   # If the user didn't override the signing type, then only real-sign on main.
   ${{ if ne(parameters.SignTypeOverride, 'default') }}:
     SignType: ${{ parameters.SignTypeOverride }}
-  ${{ if and(eq(parameters.SignTypeOverride, 'default'), eq(variables['Build.SourceBranchName'], 'main'))) }}:
+  ${{ if and(eq(parameters.SignTypeOverride, 'default'), eq(variables['Build.SourceBranchName'], 'main')) }}:
     SignType: test # set to real when we're ready
-  ${{ if and(eq(parameters.SignTypeOverride, 'default'), not(eq(variables['Build.SourceBranchName'], 'main')))) }}:
+  ${{ if and(eq(parameters.SignTypeOverride, 'default'), not(eq(variables['Build.SourceBranchName'], 'main'))) }}:
     SignType: test
   # This variable will be expanded later and allows us to deploy to the vcpkg-ce repo.
   GIT_SSH_COMMAND: ssh -i "$(githubDeployKey.secureFilePath)"
