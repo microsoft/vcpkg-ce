@@ -42,8 +42,13 @@ steps:
   - script: mkdir %USERPROFILE%\.ssh && echo * ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==>>%USERPROFILE%\.ssh\known_hosts
     displayName: Store GitHub public key
 
-  - script: git clone git@github.com:microsoft/vcpkg-ce.git
+  - script: |
+      dir $(Pipeline.Workspace)
+      dir $(Pipeline.Workspace)/s
+      rmdir /s /q  $(Pipeline.Workspace)/s
+      git clone git@github.com:microsoft/vcpkg-ce.git  $(Pipeline.Workspace)/s
     displayName: Clone deployment repo
+    workingDirectory:  $(Pipeline.Workspace)
 
   - task: NuGetAuthenticate@0
     displayName: Authenticate NuGet
@@ -65,7 +70,7 @@ steps:
     displayName: Run PoliCheck
     inputs:
       targetType: F
-      targetArgument: $(Build.SourcesDirectory)/vcpkg-ce
+      targetArgument: $(Pipeline.Workspace)/s
 
   # Build and test the project.
   - task: UseNode@1
@@ -76,10 +81,10 @@ steps:
     displayName: Install Rush
   - script: rush update
     displayName: Install dependencies
-    workingDirectory: $(Pipeline.Workspace)/vcpkg-ce
+    workingDirectory: $(Pipeline.Workspace)/s
   - script: rush lint
     displayName: Check for linting errors
-    workingDirectory: $(Pipeline.Workspace)/vcpkg-ce
+    workingDirectory: $(Pipeline.Workspace)/s
   - script: |
       rush set-versions
       node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2));"
@@ -88,22 +93,24 @@ steps:
       # set the 'TagName' task variable (instead of picking up the tag from the repo)
       echo "##vso[task.setvariable variable=TagName;]$PKG_VERSION"
     displayName: set node package version for projects
-    workingDirectory: $(Pipeline.Workspace)/vcpkg-ce
+    workingDirectory: $(Pipeline.Workspace)/s
   - script: rush rebuild
     displayName: Build all packages
-    workingDirectory: $(Pipeline.Workspace)/vcpkg-ce
+    workingDirectory: $(Pipeline.Workspace)/s
   - script: rush test
     displayName: Run tests
-    workingDirectory: $(Pipeline.Workspace)/vcpkg-ce
+    workingDirectory: $(Pipeline.Workspace)/s
 
   # Collect all dependencies. Output will be placed in the ./common/deploy directory.
   - script: rush deploy
     displayName: Collect dependencies
-    workingDirectory: $(Pipeline.Workspace)/vcpkg-ce
+    workingDirectory: $(Pipeline.Workspace)/s
 
   - task: ComponentGovernanceComponentDetection@0
     displayName: Detect components
+    
     inputs:
+      
       ignoreDirectories: vcpkg-ce/common/temp
 
   # Sign JavaScript and PowerShell files.
@@ -122,10 +129,10 @@ steps:
   - task: msospo.ospo-extension.8d7f9abb-6896-461d-9e25-4f74ed65ddb2.notice@0
     displayName: Generate NOTICE file
     inputs:
-      outputfile: $(Build.SourcesDirectory)/vcpkg-ce/common/deploy/NOTICE.txt
+      outputfile: $(Build.SourcesDirectory)/s/common/deploy/NOTICE.txt
 
   # Create pack and extract files to staging directory.
-  - script: npm pack $(Build.SourcesDirectory)/vcpkg-ce/common/deploy
+  - script: npm pack $(Build.SourcesDirectory)/s/common/deploy
     displayName: Create pack
   - powershell: mkdir $(OutputDirectory); copy vcpkg-ce-*.tgz $(OutputDirectory)/ce.tgz
     displayName: Copy pack
@@ -133,7 +140,7 @@ steps:
   - task: CopyFiles@2
     displayName: Copy bootstrapping scripts
     inputs:
-      sourceFolder: $(Build.SourcesDirectory)/vcpkg-ce/common/deploy/scripts
+      sourceFolder: $(Build.SourcesDirectory)/s/common/deploy/scripts
       contents: |
         ce
         ce.ps1
@@ -214,7 +221,7 @@ steps:
   # tag every build as a release
   - script: git -c user.email=embeddedbot@microsoft.com -c user.name="Embedded Bot" tag -a $(TagName) -m "vcpkg-ce release $(TagName)" && git push origin $(TagName)
     displayName: Push release tag
-    workingDirectory: $(Pipeline.Workspace)/vcpkg-ce
+    workingDirectory: $(Pipeline.Workspace)/s
 
   - task: GitHubRelease@0
     displayName: Publish to public repo
