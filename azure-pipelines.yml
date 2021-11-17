@@ -178,29 +178,6 @@ steps:
       uploadTSLint: false
     condition: eq(variables['Build.SourceBranchName'], 'main')
 
-  # This task won't actually publish if the release isn't tagged.
-  # Disabled for now because there's no reason to publish to both the internal
-  # and public repos.
-  # - task: GitHubRelease@0
-  #   displayName: Publish to internal repo
-  #   inputs:
-  #     gitHubConnection: embeddedbot
-  #     repositoryName: microsoft/vcpkg-ce
-  #     action: create
-  #     target: $(Build.SourceVersion)
-  #     tagSource: auto
-  #     assets: |
-  #       $(OutputDirectory)\ce
-  #       $(OutputDirectory)\ce.ps1
-  #       $(OutputDirectory)\ce.cmd
-  #       $(OutputDirectory)\ce.tgz
-  #       $(OutputDirectory)\signature.cat
-  #       $(OutputDirectory)\ce.tgz.asc
-  #       $(OutputDirectory)\ce.tgz.cat
-  #       $(OutputDirectory)\ce.asc
-  #     isPreRelease: false
-  
-
   # The following tasks publish to the issue-only public vcpkg-ce repo. We
   # have a deploy key stored as a secret file in Azure Pipelines which is used
   # to authenticate for pushing a tag and creating a release.
@@ -218,13 +195,11 @@ steps:
   # https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
   - script: mkdir %USERPROFILE%\.ssh && echo * ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==>>%USERPROFILE%\.ssh\known_hosts
     displayName: Store GitHub public key
-    
   
   # tag every build as a release
   - script: git -c user.email=embeddedbot@microsoft.com -c user.name="Embedded Bot" tag -a $(TagName) -m "vcpkg-ce release $(TagName)" && git push origin $(TagName)
     displayName: Push release tag
     workingDirectory: $(Pipeline.Workspace)
-    
 
   - task: GitHubRelease@0
     displayName: Publish to public repo
@@ -249,7 +224,6 @@ steps:
         $(OutputDirectory)\ce.tgz.cat
         $(OutputDirectory)\ce.asc
       isPreRelease: false
-    
 
   - task: MicroBuildCleanup@1
     displayName: Clean up MicroBuild
