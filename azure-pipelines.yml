@@ -38,12 +38,10 @@ variables:
 
 steps:
   - checkout: none # use a git clone command below. 
-  - task: GitClone@2
-    inputs:
-      RepositoryURL: 'https://github.com/microsoft/vcpkg-ce'
-      Branch: 'main'
-      FallbackBranch: 'main'
-      BaseBranch: 'main'
+  
+  - script: git clone git@github.com:microsoft/vcpkg-ce.git
+    displayName: Clone deployment repo
+    workingDirectory: $(Pipeline.Workspace)
 
   - task: NuGetAuthenticate@0
     displayName: Authenticate NuGet
