@@ -101,7 +101,7 @@ if( $ENV:VCPKG_ROOT ) {
   $ENV:VCPKG_ROOT=$VCPKG_ROOT
 }
 
-$CE = "${VCPKG_ROOT}"
+$CE = "${VCPKG_ROOT}/CE"
 $MODULES= "$CE/node_modules"
 $SCRIPT:VCPKG_SCRIPT=(resolve $MODULES/.bin/ce.ps1)
 $SCRIPT:CE_MODULE=(resolve $MODULES/vcpkg-ce )
@@ -213,12 +213,17 @@ function bootstrap-vcpkg-ce {
   }
 
   ## if we're running from an installed module location, we'll keep that.
-  $MODULE=(resolve ${PSScriptRoot}/node_modules/vcpkg-ce )
+  $MODULE=(resolve ${PSScriptRoot}/CE/node_modules/vcpkg-ce )
 
   if( test-path $MODULE ) {
     $SCRIPT:CE_MODULE=$MODULE
     return $TRUE
   }
+
+  # cleanup the yarn cache.
+  ce-debug "Clearing YARN cache"
+  $shh = & $VCPKG_NODE $YARN cache clean --force 2>&1
+  $error.clear();
 
   write-host "Installing vcpkg-ce to ${VCPKG_ROOT}"
 
@@ -227,14 +232,15 @@ function bootstrap-vcpkg-ce {
 
   $PATH = $ENV:PATH
   $ENV:PATH="$CE\bin\;$PATH"
-  &$VCPKG_NODE $NPM install $PKG --no-lockfile --force --verbose 2>&1 >> $VCPKG_ROOT/log.txt
   
+  &$VCPKG_NODE $YARN add $PKG --no-lockfile --force --scripts-prepend-node-path=true --modules-folder=$MODULES 2>&1 >> $VCPKG_ROOT/log.txt
   $ENV:PATH = $PATH
 
   remove-item -path $ce/package.json -ea 0
 
   popd
 
+  ce-debug 'yarn finished.'
   if( $error.count -gt 0 ) {
     $error |% { add-content -encoding UTF8 $VCPKG_ROOT/log.txt $_ }
     $Error.clear()
@@ -257,6 +263,12 @@ function bootstrap-vcpkg-ce {
 
 # ensure it's there.
 $shh = new-item -type directory $CE,$MODULES,"$CE/files" -ea 0
+
+# grab the yarn cli script
+$SCRIPT:YARN = resolve "$CE/files/yarn.js"
+if( -not (test-path $SCRIPT:YARN )) {
+  $SCRIPT:YARN = download https://aka.ms/yarn.js $YARN
+}
 
 if( -not (bootstrap-node )) {
   write-error "Unable to acquire an appropriate version of Node."
