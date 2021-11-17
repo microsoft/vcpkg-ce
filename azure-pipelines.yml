@@ -44,7 +44,6 @@ steps:
 
   - script: git clone git@github.com:microsoft/vcpkg-ce.git
     displayName: Clone deployment repo
-    workingDirectory: $(Pipeline.Workspace)
 
   - task: NuGetAuthenticate@0
     displayName: Authenticate NuGet
