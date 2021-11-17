@@ -39,6 +39,9 @@ variables:
 steps:
   - checkout: none # use a git clone command below. 
   
+  - script: mkdir %USERPROFILE%\.ssh && echo * ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==>>%USERPROFILE%\.ssh\known_hosts
+    displayName: Store GitHub public key
+
   - script: git clone git@github.com:microsoft/vcpkg-ce.git
     displayName: Clone deployment repo
     workingDirectory: $(Pipeline.Workspace)
