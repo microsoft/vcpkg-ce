@@ -37,6 +37,17 @@ variables:
   
 
 steps:
+  - checkout: none # use a git clone command below. 
+  
+  - script: mkdir %USERPROFILE%\.ssh && echo * ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==>>%USERPROFILE%\.ssh\known_hosts
+    displayName: Store GitHub public key
+
+  - script: |
+      rmdir /s /q  $(Pipeline.Workspace)\s
+      git clone git@github.com:microsoft/vcpkg-ce.git  $(Pipeline.Workspace)\s
+    displayName: Clone deployment repo
+    workingDirectory:  $(Pipeline.Workspace)
+
   - task: NuGetAuthenticate@0
     displayName: Authenticate NuGet
 
@@ -57,40 +68,49 @@ steps:
     displayName: Run PoliCheck
     inputs:
       targetType: F
-      targetArgument: $(Build.SourcesDirectory)
+      targetArgument: $(Pipeline.Workspace)\s
 
   # Build and test the project.
   - task: UseNode@1
     displayName: Use Node 16 or later
     inputs:
       version: "16.x"
-  - script: npm install -g @microsoft/rush
-    displayName: Install Rush
-  - script: rush update
-    displayName: Install dependencies
-  - script: rush lint
-    displayName: Check for linting errors
-  - script: |
+  - powershell: |
+      write-host install rush
+      npm install -g @microsoft/rush
+
+      write-host  Install dependencies
+      rush update
+
+      write-host  Check for linting errors
+      rush lint
+      
+      write-host Update version numbers
       rush set-versions
       node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2));"
-      export PKG_VERSION=$(node -p "require('./ce/package.json').version")
+      $PKG_VERSION=(node -p "require('./ce/package.json').version")
       echo "The version for this build is : $PKG_VERSION"
-      # set the 'TagName' task variable (instead of picking up the tag from the repo)
       echo "##vso[task.setvariable variable=TagName;]$PKG_VERSION"
-    displayName: set node package version for projects
-  - script: rush rebuild
-    displayName: Build all packages
-  - script: rush test
-    displayName: Run tests
+
+      write-host Build the code
+      rush rebuild
+
+      write-host run the unit tests
+      rush test
+      
+    displayName: Build and test 
 
   # Collect all dependencies. Output will be placed in the ./common/deploy directory.
   - script: rush deploy
     displayName: Collect dependencies
+    workingDirectory: $(Pipeline.Workspace)\s
 
   - task: ComponentGovernanceComponentDetection@0
     displayName: Detect components
+    
     inputs:
-      ignoreDirectories: common/temp
+      
+      ignoreDirectories: vcpkg-ce/common/temp
 
   # Sign JavaScript and PowerShell files.
   - task: NuGetCommand@2
@@ -115,6 +135,7 @@ steps:
     displayName: Create pack
   - powershell: mkdir $(OutputDirectory); copy vcpkg-ce-*.tgz $(OutputDirectory)/ce.tgz
     displayName: Copy pack
+
   - task: CopyFiles@2
     displayName: Copy bootstrapping scripts
     inputs:
@@ -193,13 +214,15 @@ steps:
   # This public key should have the well-known fingerprint documented below.
   # SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8
   # https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
-  - script: mkdir %USERPROFILE%\.ssh && echo * ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==>>%USERPROFILE%\.ssh\known_hosts
-    displayName: Store GitHub public key
   
   # tag every build as a release
-  - script: git -c user.email=embeddedbot@microsoft.com -c user.name="Embedded Bot" tag -a $(TagName) -m "vcpkg-ce release $(TagName)" && git push origin $(TagName)
+  - powershell: |
+      $PKG_VERSION=(node -p "require('./ce/package.json').version")
+      echo "The version for this build is $PKG_VERSION"
+      git -c user.email=embeddedbot@microsoft.com -c user.name="Embedded Bot" tag -a $PKG_VERSION -m "vcpkg-ce release $PKG_VERSION"
+      git push origin $PKG_VERSION
     displayName: Push release tag
-    workingDirectory: $(Pipeline.Workspace)
+    workingDirectory: $(Pipeline.Workspace)/s
 
   - task: GitHubRelease@0
     displayName: Publish to public repo
