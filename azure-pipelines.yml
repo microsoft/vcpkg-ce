@@ -35,6 +35,9 @@ variables:
   
 
 steps:
+  - task: NuGetAuthenticate@0
+    displayName: Authenticate NuGet
+
   - task: MicroBuildSigningPlugin@3
     displayName: Install MicroBuild Signing
     inputs:
@@ -85,9 +88,6 @@ steps:
     displayName: Detect components
     inputs:
       ignoreDirectories: common/temp
-
-  - task: NuGetAuthenticate@0
-    displayName: Authenticate NuGet
 
   # Sign JavaScript and PowerShell files.
   - task: NuGetCommand@2
