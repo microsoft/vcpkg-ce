@@ -73,7 +73,7 @@ steps:
   - script: |
       rush set-versions
       node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2)); console.log(``set asset version to `${p.version}``);"
-      export PKG_VERSION=`node -p "require('./ce/package.json').version"`
+      export PKG_VERSION=$(node -p "require('./ce/package.json').version")
       echo "The version for this build is : $PKG_VERSION"
       # set the 'TagName' task variable (instead of picking up the tag from the repo)
       echo "##vso[task.setvariable variable=TagName;]$PKG_VERSION"
@@ -199,7 +199,7 @@ steps:
   #       $(OutputDirectory)\ce.tgz.cat
   #       $(OutputDirectory)\ce.asc
   #     isPreRelease: false
-  #   #condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))  
+  
 
   # The following tasks publish to the issue-only public vcpkg-ce repo. We
   # have a deploy key stored as a secret file in Azure Pipelines which is used
@@ -209,7 +209,7 @@ steps:
     name: githubDeployKey
     inputs:
       secureFile: id_vcpkgce
-    #condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))  
+    
   # GitHub has a large, regularly changing set of IP address, so ignore the
   # hostname and allow anything with the right key.
   # https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/about-githubs-ip-addresses
@@ -218,13 +218,13 @@ steps:
   # https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
   - script: mkdir %USERPROFILE%\.ssh && echo * ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==>>%USERPROFILE%\.ssh\known_hosts
     displayName: Store GitHub public key
-    #condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))  
+    
   
   # tag every build as a release
   - script: git -c user.email=embeddedbot@microsoft.com -c user.name="Embedded Bot" tag -a $(TagName) -m "vcpkg-ce release $(TagName)" && git push origin $(TagName)
     displayName: Push release tag
     workingDirectory: $(Pipeline.Workspace)
-    #condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))  
+    
 
   - task: GitHubRelease@0
     displayName: Publish to public repo
@@ -249,7 +249,7 @@ steps:
         $(OutputDirectory)\ce.tgz.cat
         $(OutputDirectory)\ce.asc
       isPreRelease: false
-    #condition: and(succeeded(), startsWith(variables['Build.SourceBranch'], 'refs/tags'))  
+    
 
   - task: MicroBuildCleanup@1
     displayName: Clean up MicroBuild
