@@ -3,7 +3,7 @@
 
 
 import { extname } from 'path';
-import { Document, LineCounter, parseDocument, YAMLMap } from 'yaml';
+import { Document, isMap, LineCounter, parseDocument, YAMLMap } from 'yaml';
 import { i } from '../i18n';
 import { ErrorKind } from '../interfaces/error-kind';
 import { Profile } from '../interfaces/metadata/metadata-format';
@@ -13,6 +13,7 @@ import { Uri } from '../util/uri';
 import { BaseMap } from '../yaml/BaseMap';
 import { Coerce } from '../yaml/Coerce';
 import { toYAML } from '../yaml/yaml';
+import { Yaml, YAMLDictionary } from '../yaml/yaml-types';
 import { Contacts } from './contact';
 import { Demands } from './demands';
 import { DocumentContext } from './document-context';
@@ -194,5 +195,12 @@ export class MetadataFile extends BaseMap implements Profile {
     yield* this.globalSettings.validate();
     yield* this.requires.validate();
     yield* this.seeAlso.validate();
+  }
+
+  /** @internal */override assert(recreateIfDisposed = false, node = this.node): asserts this is Yaml<YAMLDictionary> & { node: YAMLDictionary } {
+    if (!isMap(this.node)) {
+      this.node = <YAMLMap<string, any>><any>parseDocument('{ }', { prettyErrors: false, lineCounter: this.context.lineCounter, strict: true }).contents;
+    }
+
   }
 }

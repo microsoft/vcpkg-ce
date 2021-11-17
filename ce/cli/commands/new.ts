@@ -31,8 +31,9 @@ export class NewCommand extends Command {
       log(i`The folder at ${session.currentDirectory.fsPath} already contains a project file '${project}'`);
       return false;
     }
+    const prjFile = session.currentDirectory.join(project);
 
-    await (await MetadataFile.parseConfiguration(project, '# Environment configuration\n', session)).save(session.currentDirectory.join(project));
+    await (await MetadataFile.parseConfiguration(prjFile.toString(), '# Environment configuration\n', session)).save(session.currentDirectory.join(project));
 
     return true;
   }

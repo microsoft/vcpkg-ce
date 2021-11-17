@@ -48,6 +48,7 @@ export class UnifiedFileSystem extends FileSystem {
    */
   public filesystem(uri: string | Uri) {
     const scheme = schemeOf(uri.toString());
+
     strict.ok(scheme, i`uri ${uri.toString()} has no scheme`);
 
     const filesystem = this.filesystems[scheme];
