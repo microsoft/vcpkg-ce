@@ -75,29 +75,30 @@ steps:
     displayName: Use Node 16 or later
     inputs:
       version: "16.x"
-  - script: npm install -g @microsoft/rush
-    displayName: Install Rush
-  - script: rush update
-    displayName: Install dependencies
-    workingDirectory: $(Pipeline.Workspace)\s
-  - script: rush lint
-    displayName: Check for linting errors
-    workingDirectory: $(Pipeline.Workspace)\s
-  - script: |
+  - powershell: |
+      write-host install rush
+      npm install -g @microsoft/rush
+
+      write-host  Install dependencies
+      rush update
+
+      write-host  Check for linting errors
+      rush lint
+      
+      write-host Update version numbers
       rush set-versions
       node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2));"
       $PKG_VERSION=(node -p "require('./ce/package.json').version")
       echo "The version for this build is : $PKG_VERSION"
-      # set the 'TagName' task variable (instead of picking up the tag from the repo)
       echo "##vso[task.setvariable variable=TagName;]$PKG_VERSION"
-    displayName: set node package version for projects
-    workingDirectory: $(Pipeline.Workspace)\s
-  - script: rush rebuild
-    displayName: Build all packages
-    workingDirectory: $(Pipeline.Workspace)\s
-  - script: rush test
-    displayName: Run tests
-    workingDirectory: $(Pipeline.Workspace)\s
+
+      write-host Build the code
+      rush rebuild
+
+      write-host run the unit tests
+      rush test
+      
+    displayName: Build and test 
 
   # Collect all dependencies. Output will be placed in the ./common/deploy directory.
   - script: rush deploy
@@ -215,7 +216,7 @@ steps:
   # https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
   
   # tag every build as a release
-  - script: |
+  - powershell: |
       $PKG_VERSION=(node -p "require('./ce/package.json').version")
       echo "The version for this build is $PKG_VERSION"
       git -c user.email=embeddedbot@microsoft.com -c user.name="Embedded Bot" tag -a $PKG_VERSION -m "vcpkg-ce release $PKG_VERSION" && git push origin $PKG_VERSION
