@@ -11,7 +11,6 @@ parameters:
   - real
 
 pr: none
-checkout: none # use a git clone command below. 
 
 trigger:
   branches:
@@ -38,6 +37,7 @@ variables:
   
 
 steps:
+- checkout: none # use a git clone command below. 
 - task: GitClone@2
   inputs:
     RepositoryURL: 'http://github.com/microsoft/vcpkg-ce'
