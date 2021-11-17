@@ -10,6 +10,8 @@ parameters:
   - test
   - real
 
+pr: none
+
 trigger:
   branches:
     include:
