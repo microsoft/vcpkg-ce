@@ -40,7 +40,7 @@ steps:
   - checkout: none # use a git clone command below. 
   - task: GitClone@2
     inputs:
-      RepositoryURL: 'http://github.com/microsoft/vcpkg-ce'
+      RepositoryURL: 'https://github.com/microsoft/vcpkg-ce'
       Branch: 'main'
       FallbackBranch: 'main'
       BaseBranch: 'main'
