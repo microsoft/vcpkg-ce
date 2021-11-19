@@ -104,6 +104,10 @@ export class CommandLine {
     return !!this.switches['debug'];
   }
 
+  get fromVCPKG() {
+    return !!this.switches['from-vcpkg'];
+  }
+
   get language() {
     const l = this.switches['language'] || [];
     strict.ok((l?.length || 0) < 2, i`Expected a single value for ${cmdSwitch('language')} - found multiple`);

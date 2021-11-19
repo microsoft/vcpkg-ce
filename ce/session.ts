@@ -144,6 +144,7 @@ export class Session {
 
   async isLocalRegistry(location: Uri | string): Promise<boolean> {
     location = this.parseUri(location);
+
     if (location.scheme === 'file') {
       if (await isIndexFile(location)) {
         return true;

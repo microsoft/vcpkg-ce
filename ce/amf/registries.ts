@@ -188,7 +188,7 @@ export class Registry extends Entity implements IRegistry {
 }
 
 class LocalRegistry extends Registry {
-  readonly location = new Strings(undefined, this, 'path');
+  readonly location = new Strings(undefined, this, 'location');
   /** @internal */
   override *validate(): Iterable<ValidationError> {
     //

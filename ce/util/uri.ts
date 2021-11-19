@@ -325,5 +325,14 @@ bad.fragment === '/project1';
 }
 
 export function isFilePath(uriOrPath?: Uri | string): boolean {
-  return !!(/^[/\\.]|^[a-zA-Z]:/g.exec((uriOrPath || '').toString()));
+  if (uriOrPath) {
+    if (uriOrPath instanceof Uri) {
+      return uriOrPath.scheme === 'file';
+    }
+    if (uriOrPath.startsWith('file:')) {
+      return true;
+    }
+    return !!(/^[/\\.]|^[a-zA-Z]:/g.exec((uriOrPath || '').toString()));
+  }
+  return false;
 }
