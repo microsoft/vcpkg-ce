@@ -27,6 +27,7 @@ import { blank, cli, product } from './cli/constants';
 import { command as formatCommand, hint } from './cli/format';
 import { debug, error, initStyling, log } from './cli/styling';
 import { i, setLocale } from './i18n';
+import { trackEvent } from './insights';
 import { Session } from './session';
 import { Version as cliVersion } from './version';
 
@@ -49,6 +50,8 @@ function header() {
 
 export let session: Session;
 require('./exports');
+
+trackEvent; // ensure it's loaded asap.
 
 async function main() {
   // create our session for this process.

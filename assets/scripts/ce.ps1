@@ -22,34 +22,6 @@ $VCPKG_NODE_LATEST='16.12.0'
 $VCPKG_NODE_REMOTE='https://nodejs.org/dist/'
 $VCPKG_START_TIME=get-date
 
-function eval($item) {
-  if( $item -is [ScriptBlock] ) { return & $item }
-  return $item
-}
-
-function Invoke-Assignment {
-  if( $args ) {
-    # ternary
-    if ($p = [array]::IndexOf($args,'?' )+1) {
-      if (eval($args[0])) { return eval($args[$p]) }  # ternary true
-      return eval($args[([array]::IndexOf($args,':',$p))+1])  # ternary false
-    }
-
-    # null-coalescing
-    if ($p = ([array]::IndexOf($args,'??',$p)+1)) {
-      if ($result = eval($args[0])) { return $result }  # first arg true
-      return eval($args[$p]) # first arg false
-    }
-
-    # neither ternary or null-coalescing, just a value
-    return eval($args[0])
-  }
-  return $null
-}
-
-# alias the function to the equals sign (which doesn't impede the normal use of = )
-set-alias = Invoke-Assignment
-
 function resolve([string]$name) {
   $name = Resolve-Path $name -ErrorAction 0 -ErrorVariable _err
   if (-not($name)) { return $_err[0].TargetObject }
@@ -101,8 +73,18 @@ if( $ENV:VCPKG_ROOT ) {
   $ENV:VCPKG_ROOT=$VCPKG_ROOT
 }
 
-$CE = "${VCPKG_ROOT}/CE"
+# set the download path
+if( $ENV:VCPKG_DOWNLOADS ) {
+  $SCRIPT:VCPKG_DOWNLOADS= (resolve $ENV:VCPKG_DOWNLOADS)
+  $ENV:VCPKG_DOWNLOADS=$VCPKG_DOWNLOADS
+} else {
+  $SCRIPT:VCPKG_DOWNLOADS= (resolve "$VCPKG_ROOT/downloads")
+  $ENV:VCPKG_DOWNLOADS=$VCPKG_DOWNLOADS
+}
+
+$CE = "${VCPKG_ROOT}"
 $MODULES= "$CE/node_modules"
+
 $SCRIPT:VCPKG_SCRIPT=(resolve $MODULES/.bin/ce.ps1)
 $SCRIPT:CE_MODULE=(resolve $MODULES/vcpkg-ce )
 
@@ -138,10 +120,27 @@ function verify-node($NODE) {
   return $FALSE
 }
 
+function find-node() {
+  $PLACES= @($VCPKG_DOWNLOADS,"$ENV:LOCALAPPDATA/vcpkg/downloads/tools")
+  for( $i=0; $i -lt $PLACES.count; $i++ ) {
+    $p = $PLACES[$i]
+    if( $p ) {
+      $NODES= @()+((get-childitem -ea 0 $p -recurse |? {$_.name -in @('node.exe', 'node')}).FullName)
+      for( $j=0; $j -lt $NODES.count; $j++ ) {
+        $NODE=$NODES[$j]
+        if( verify-node $NODE ) {
+          return $NODE
+        }
+      }
+    }
+  }
+}
+
 function bootstrap-node {
   # if we have a custom ce node let's use that first
-  if( (verify-node (resolve "$CE/bin/node"))) {
-    ce-debug "Node: ${VCPKG_NODE}"
+  $NODE=find-node
+  if( $NODE ) {
+    ce-debug "Node: $NODE"
     return $TRUE;
   }
 
@@ -169,37 +168,35 @@ function bootstrap-node {
 
   $NODE_FULLNAME="node-v${VCPKG_NODE_LATEST}-${NODE_OS}-${NODE_ARCH}"
   $NODE_URI="${VCPKG_NODE_REMOTE}v${VCPKG_NODE_LATEST}/${NODE_FULLNAME}${NODE_ARCHIVE_EXT}"
-  $NODE_ARCHIVE= resolve "$CE/files/${NODE_FULLNAME}${NODE_ARCHIVE_EXT}"
+  $NODE_FOLDER=resolve "${VCPKG_DOWNLOADS}/${NODE_FULLNAME}"
+  $NODE_ARCHIVE=resolve "$VCPKG_DOWNLOADS/${NODE_FULLNAME}${NODE_ARCHIVE_EXT}"
+
+  write-host "Installing node runtime"
 
   $ProgressPreference = 'SilentlyContinue'
   ce-debug "Downloading Node: ${NODE_URI}"
   download $NODE_URI $NODE_ARCHIVE
-
+  $shh = new-item -type directory -ea 0 $NODE_FOLDER 
+  
   switch($NODE_OS){
     'win' {
       if( get-command -ea 0 tar.exe ) {
-        tar "-xvf" "${NODE_ARCHIVE}" -C "${CE}"  2>&1  > $null
+        tar "-xvf" "${NODE_ARCHIVE}" -C "${NODE_FOLDER}"  2>&1  > $null
       } else {
-        $shh= expand-archive -path $NODE_ARCHIVE -destinationpath "${CE}"
+        $shh= expand-archive -path $NODE_ARCHIVE -destinationpath "$NODE_FOLDER"
       }
-      move-item "$CE/${NODE_FULLNAME}" "$CE/bin"
     }
     'aix' {
-      $shh = gunzip "${NODE_ARCHIVE}" | tar -xvC "${CE}" "${NODE_FULLNAME}/bin/${NODE_EXE}"
-      move-item "$CE/${NODE_FULLNAME}/bin" "$CE/"
-      move-item "$CE/${NODE_FULLNAME}/lib" "$CE/"
-      remove-item "$CE/${NODE_FULLNAME}" -force -recurse
+      $shh = gunzip "${NODE_ARCHIVE}" | tar -xvC "$NODE_FOLDER" "${NODE_FULLNAME}/bin/"
     }
     default {
-      $shh = tar "-zxvf" "${NODE_ARCHIVE}" -C "${CE}"
-      move-item "$CE/${NODE_FULLNAME}/bin" "$CE/"
-      move-item "$CE/${NODE_FULLNAME}/lib" "$CE/"
-      remove-item "$CE/${NODE_FULLNAME}" -force -recurse
+      $shh = tar "-zxvf" "${NODE_ARCHIVE}" -C "$NODE_FOLDER"
     }
   }
 
-  if( (verify-node (resolve "$CE/bin/node"))) {
-    ce-debug "Node: ${VCPKG_NODE}"
+  $NODE=find-node
+  if( $NODE ) {
+    ce-debug "Node: $NODE"
     return $TRUE;
   }
 
@@ -213,7 +210,7 @@ function bootstrap-vcpkg-ce {
   }
 
   ## if we're running from an installed module location, we'll keep that.
-  $MODULE=(resolve ${PSScriptRoot}/CE/node_modules/vcpkg-ce )
+  $MODULE=(resolve ${PSScriptRoot}/node_modules/vcpkg-ce )
 
   if( test-path $MODULE ) {
     $SCRIPT:CE_MODULE=$MODULE
@@ -227,7 +224,14 @@ function bootstrap-vcpkg-ce {
 
   write-host "Installing vcpkg-ce to ${VCPKG_ROOT}"
 
-  $PKG == $USE_LOCAL_VCPKG_PKG ?? https://aka.ms/vcpkg-ce.tgz
+  if( $ENV:USE_LOCAL_VCPKG_PKG )  {
+    $USE_LOCAL_VCPKG_PKG=$ENV:USE_LOCAL_VCPKG_PKG 
+  }
+
+  $PKG = $USE_LOCAL_VCPKG_PKG
+  if( -not $PKG ) {
+    $PKG = 'https://aka.ms/vcpkg-ce.tgz'
+  }
   pushd $CE
 
   $PATH = $ENV:PATH
@@ -247,7 +251,7 @@ function bootstrap-vcpkg-ce {
   }
 
   # we should also copy the .bin files into the $VCPKG_ROOT folder to make reactivation (without being on the PATH) easy
-  copy-item "$MODULES/.bin/ce.*" $VCPKG_ROOT
+  copy-item "$MODULES/.bin/ce*" $VCPKG_ROOT
 
   # Copy the NOTICE and LICENSE files to $VCPKG_ROOT to improve discoverability.
   copy-item "$CE_MODULE/NOTICE.txt","$CE_MODULE/LICENSE.txt" $VCPKG_ROOT
@@ -262,10 +266,10 @@ function bootstrap-vcpkg-ce {
 }
 
 # ensure it's there.
-$shh = new-item -type directory $CE,$MODULES,"$CE/files" -ea 0
+$shh = new-item -type directory $CE,$MODULES,"$CE/scripts",$VCPKG_DOWNLOADS -ea 0
 
 # grab the yarn cli script
-$SCRIPT:YARN = resolve "$CE/files/yarn.js"
+$SCRIPT:YARN = resolve "$CE/scripts/yarn.js"
 if( -not (test-path $SCRIPT:YARN )) {
   $SCRIPT:YARN = download https://aka.ms/yarn.js $YARN
 }

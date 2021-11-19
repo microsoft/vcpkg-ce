@@ -93,7 +93,7 @@ export class Session {
     this.setupLogging();
 
     this.homeFolder = this.fileSystem.file(settings['homeFolder']!);
-    this.cache = this.homeFolder.join('cache');
+    this.cache = this.environment['VCPKG_DOWNLOADS'] ? this.parseUri(this.environment['VCPKG_DOWNLOADS']) : this.homeFolder.join('downloads');
     this.globalConfig = this.homeFolder.join('vcpkg-configuration.global.json');
 
     this.tmpFolder = this.homeFolder.join('tmp');
@@ -105,7 +105,6 @@ export class Session {
 
     // add built in registries
     this.defaultRegistry = new AggregateRegistry(this);
-    // this.defaultRegistry.add(this.loadRegistry('https://aka.ms/vcpkg-ce-default', 'artifact')!, 'microsoft');
   }
 
   parseUri(uriOrPath: string | Uri): Uri {

@@ -75,10 +75,12 @@ else
   export VCPKG_ROOT=~/.vcpkg
 fi;
 
-CE=${VCPKG_ROOT}/CE
+CE=${VCPKG_ROOT}
 mkdir -p $CE
 
-VCPKG_NODE=${CE}/bin/node
+VCPKG_DOWNLOADS=${CE}/downloads
+
+VCPKG_NODE=${CE}/downloads/bin/node
 VCPKG_NPM=${CE}/bin/npm
 
 VCPKG_debug() {
@@ -180,41 +182,59 @@ VCPKG_cleanup() {
   fi
 	unset Z_VCPKG_POSTSCRIPT
 }
-
-VCPKG_bootstrap_node() {
-  VCPKG_debug starting VCPKG_bootstrap_node
-
+VCPKG_verify_node() {
+  # $1 should be the folder to check
   local NODE_EXE="node"
   if [ "${VCPKG_OS}" = "win" ]; then
     NODE_EXE="node.exe"
   fi
-
-  local N=`which $NODE_EXE`
-  if [ ! -z "$N" ]; then
-    if [ -f $N ]; then
-      if [ `$N -e "[major, minor, patch ] = process.versions.node.split('.'); console.log( !!(major>16 || major == 16 & minor >= 12) )"` = "true" ]; then
-        VCPKG_NODE=$N
-        VCPKG_NPM=`which npm`
-        VCPKG_debug using node in path
-        return 0
+  
+  local N=$(which $1/$NODE_EXE)
+  
+    if [ ! -z "$N" ]; then
+      if [ -f $N ]; then
+        if [ $($N -e "[major, minor, patch ] = process.versions.node.split('.'); console.log( !!(major>16 || major == 16 & minor >= 12) )") = "true" ]; then
+          VCPKG_NODE=$N
+          VCPKG_NPM=$(which $1/npm)
+          VCPKG_debug using node in $1
+          return 0
+        fi
       fi
     fi
+    return 1;
+}
+
+VCPKG_find_node() {
+  local NODES=$(find $1 | grep -i /bin/node)
+  
+  for each in $NODES; do 
+    local d=$(dirname "$each")
+    VCPKG_verify_node $d
+    if [ $? -eq 0 ]; then
+      return 0;
+    fi
+  done
+  return 1;
+}
+
+VCPKG_bootstrap_node() {
+  VCPKG_debug starting VCPKG_bootstrap_node
+
+  # did we put one in downloads at some point?
+  VCPKG_find_node $VCPKG_DOWNLOADS
+  if [ $? -eq 0 ]; then
+    return 0;
   fi
 
+  # is there one on the path?
+  VCPKG_find_node $(dirname $(which node))
+  if [ $? -eq 0 ]; then
+    return 0;
+  fi
 
-
-  # we don't have a good node in the path
-  # we would install one here if we tried
-  # before
-  VCPKG_NODE=${CE}/bin/node
-
-  if [ -f $VCPKG_NODE ]; then
-    if [ `$VCPKG_NODE -e "[major, minor, patch ] = process.versions.node.split('.'); console.log( !!(major>16 || major == 16 & minor >= 12))"` = "true" ]; then
-      # looks good, lets grab NPM in case we need it, and get out.
-      VCPKG_NPM=`which ${CE}/bin/npm`
-      VCPKG_debug using node from ce
-      return 0
-    fi
+  local NODE_EXE="node"
+  if [ "${VCPKG_OS}" = "win" ]; then
+    NODE_EXE="node.exe"
   fi
 
   # we don't seem to have a suitable nodejs on the path
@@ -228,13 +248,13 @@ VCPKG_bootstrap_node() {
 
   local NODE_FULLNAME="node-v${VCPKG_NODE_LATEST}-${VCPKG_OS}-${VCPKG_ARCH}"
   local NODE_URI="${VCPKG_NODE_REMOTE}v${VCPKG_NODE_LATEST}/${NODE_FULLNAME}${VCPKG_ARCHIVE_EXT}"
-  local VCPKG_ARCHIVE="${CE}/files/${NODE_FULLNAME}${VCPKG_ARCHIVE_EXT}"
+  local VCPKG_ARCHIVE="${VCPKG_DOWNLOADS}/${NODE_FULLNAME}${VCPKG_ARCHIVE_EXT}"
 
-  if [ ! -d "${CE}/files" ]; then
-    command mkdir -p "${CE}/files"
+  if [ ! -d "${VCPKG_DOWNLOADS}" ]; then
+    command mkdir -p "${VCPKG_DOWNLOADS}"
   fi
 
-  echo "Downloading bootstrap node from ${NODE_URI}"
+  echo "Downloading node from ${NODE_URI} to ${VCPKG_ARCHIVE}"
   if type noglob > /dev/null 2>&1; then
     noglob curl -L -# "${NODE_URI}" -o "${VCPKG_ARCHIVE}"
   else
@@ -248,29 +268,15 @@ VCPKG_bootstrap_node() {
 
   # UNPACK IT
   if [ "${VCPKG_OS}" = "aix" ]; then
-    gunzip "${VCPKG_ARCHIVE}" | tar -xvC "${CE}" "${NODE_FULLNAME}/bin/${NODE_EXE}" >> $VCPKG_ROOT/log.txt 2>&1
+    gunzip "${VCPKG_ARCHIVE}" | tar -xvC "${VCPKG_DOWNLOADS}" "${NODE_FULLNAME}/bin/${NODE_EXE}" >> $VCPKG_ROOT/log.txt 2>&1
   else
-    tar $TAR_FLAGS "${VCPKG_ARCHIVE}" -C "${CE}" >> $VCPKG_ROOT/log.txt 2>&1
+    tar $TAR_FLAGS "${VCPKG_ARCHIVE}" -C "${VCPKG_DOWNLOADS}" >> $VCPKG_ROOT/log.txt 2>&1
   fi
-  mv "${CE}/${NODE_FULLNAME}/bin" "${CE}/" >> $VCPKG_ROOT/log.txt 2>&1
-  mv "${CE}/${NODE_FULLNAME}/lib" "${CE}/" >> $VCPKG_ROOT/log.txt 2>&1
-  rm -r "${CE}/${NODE_FULLNAME}" >> $VCPKG_ROOT/log.txt 2>&1
-
+  
   # OK, we good?
-  VCPKG_NODE=${CE}/bin/node
-  VCPKG_NPM=${CE}/bin/npm
-
-  if [ ! -f $VCPKG_NODE ]; then
-    echo "ERROR! Unable to find/get nodejs."
-    if [ "$VCPKG_OS" = "freebsd" ]; then
-      echo "NodeJS is not available for your OS as a binary drop."
-      echo "You appear to be running FreeBSD; You will need to install NodeJS manually"
-      echo ""
-      echo "run (as root): "
-      echo "   pkg install -y node16"
-      echo "   pkg install -y npm-node16"
-    fi
-    return 1;
+  VCPKG_find_node $VCPKG_DOWNLOADS
+  if [ $? -eq 0 ]; then
+    return 0;
   fi
 
   if [ ! -f $VCPKG_NPM ]; then
@@ -318,7 +324,7 @@ VCPKG_bootstrap_ce() {
 # go back where we were
   cd $VCPKG_PWD
 
-  cp $CE/node_modules/.bin/* $VCPKG_ROOT/
+  cp $CE/node_modules/.bin/ce* $VCPKG_ROOT/
 
   # Copy the NOTICE and LICENSE files to $VCPKG_ROOT to improve discoverability.
   cp $CE/node_modules/vcpkg-ce/NOTICE.txt $VCPKG_ROOT/
@@ -346,7 +352,7 @@ VCPKG_bootstrap_ce
 
 # is ce installed?
 if [ $? -eq 1 ]; then
-  VCPKG_debug failed to bootstrap ce.js
+  VCPKG_debug failed to bootstrap ce
   VCPKG_cleanup
   return 1;
 fi
