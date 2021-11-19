@@ -205,16 +205,18 @@ function bootstrap-node {
 }
 
 function bootstrap-vcpkg-ce {
-  if( test-path $VCPKG_SCRIPT ) {
-    return $TRUE;
-  }
+  if(test-path "${ce}/ce.ps1") {
+    if( test-path $VCPKG_SCRIPT ) {
+      return $TRUE;
+    }
 
-  ## if we're running from an installed module location, we'll keep that.
-  $MODULE=(resolve ${PSScriptRoot}/node_modules/vcpkg-ce )
+    ## if we're running from an installed module location, we'll keep that.
+    $MODULE=(resolve ${PSScriptRoot}/node_modules/vcpkg-ce )
 
-  if( test-path $MODULE ) {
-    $SCRIPT:CE_MODULE=$MODULE
-    return $TRUE
+    if( test-path $MODULE ) {
+      $SCRIPT:CE_MODULE=$MODULE
+      return $TRUE
+    }
   }
 
   # cleanup the yarn cache.
@@ -235,7 +237,8 @@ function bootstrap-vcpkg-ce {
   pushd $CE
 
   $PATH = $ENV:PATH
-  $ENV:PATH="$CE\bin\;$PATH"
+  $N_DIR=(resolve "$VCPKG_NODE/..")
+  $ENV:PATH="$N_DIR;$PATH"
   
   &$VCPKG_NODE $YARN add $PKG --no-lockfile --force --scripts-prepend-node-path=true --modules-folder=$MODULES 2>&1 >> $VCPKG_ROOT/log.txt
   $ENV:PATH = $PATH
