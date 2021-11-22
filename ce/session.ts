@@ -202,7 +202,7 @@ export class Session {
   }
 
   get telemetryEnabled(): Promise<boolean> {
-    return this.fileSystem.exists(this.homeFolder.join('vcpkg.disable-metrics'));
+    return this.fileSystem.exists(this.homeFolder.join('vcpkg.disable-metrics')).then((exists) => !exists);
   }
 
   async saveConfig() {
