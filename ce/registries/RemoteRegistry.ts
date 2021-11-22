@@ -9,9 +9,9 @@ import { ZipUnpacker } from '../fs/archive';
 import { i } from '../i18n';
 import { Session } from '../session';
 import { Uri } from '../util/uri';
+import { ArtifactIndex } from './artifact-index';
 import { ArtifactRegistry } from './ArtifactRegistry';
 import { Index } from './indexer';
-import { ArtifactIndex } from './registry-index';
 
 
 export class RemoteRegistry extends ArtifactRegistry implements Registry {

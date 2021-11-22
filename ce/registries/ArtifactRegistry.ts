@@ -10,9 +10,9 @@ import { Session } from '../session';
 import { Queue } from '../util/promise';
 import { Uri } from '../util/uri';
 import { isYAML, serialize } from '../yaml/yaml';
+import { ArtifactIndex } from './artifact-index';
 import { Index } from './indexer';
 import { Registries } from './registries';
-import { ArtifactIndex } from './registry-index';
 import { THIS_IS_NOT_A_MANIFEST_ITS_AN_INDEX_STRING } from './standard-registry';
 
 
