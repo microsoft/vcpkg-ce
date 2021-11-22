@@ -72,7 +72,7 @@ export class AggregateRegistry extends Registries implements Registry {
   }
 
   readonly installationFolder = Uri.parse(<FileSystem><any>undefined, 'artifacts:installFolder');
-  readonly location = Uri.parse(<FileSystem><any>undefined, 'artifacts:default')
+  readonly location = Uri.invalid;
 
   override getRegistry(id: string): Registry | undefined {
     if (id === 'default') {

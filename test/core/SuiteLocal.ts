@@ -51,12 +51,15 @@ export class SuiteLocal {
     // set the debug=1 in the environment to have the debug messages dumped during testing
     if (process.env['DEBUG'] || process.env['debug']) {
       this.session.channels.on('debug', (text, context, msec) => {
-        console.log(`[${msec}msec] ${text}`);
+        SuiteLocal.log(`[${msec}msec] ${text}`);
       });
     }
   }
 
   async after() {
     await rm(this.tempFolder, { recursive: true });
+  }
+  static log(args: any) {
+    console['log'](args);
   }
 }

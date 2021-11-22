@@ -38,6 +38,18 @@ export class Registries implements Iterable<[Registry, Array<string>]> {
     return this.registries.get(id.toString());
   }
 
+  has(registryName?: string) {
+    // only check for registries names not locations.
+    if (registryName && registryName.indexOf('://') === -1) {
+      for (const [name] of this.registries) {
+        if (name === registryName && name.indexOf('://') === -1) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
   add(registry: Registry, name?: string): Registry {
     const location = registry.location;
 

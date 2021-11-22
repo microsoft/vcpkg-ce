@@ -18,7 +18,7 @@
  * This can also be used to "add" arbitrary members to an existing type (without mutating the original object)
  *
  * @example
- * const combined = intersect( new Foo(), { test: () => { console.log('testing'); } });
+ * const combined = intersect( new Foo(), { test: () => { console.debug('testing'); } });
  * combined.test(); // writes out 'testing' to console
  *
  * @param primary primary object - members from this will have precedence.

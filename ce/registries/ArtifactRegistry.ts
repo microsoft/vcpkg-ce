@@ -10,9 +10,9 @@ import { Session } from '../session';
 import { Queue } from '../util/promise';
 import { Uri } from '../util/uri';
 import { isYAML, serialize } from '../yaml/yaml';
+import { ArtifactIndex } from './artifact-index';
 import { Index } from './indexer';
 import { Registries } from './registries';
-import { RegistryIndex } from './registry-index';
 import { THIS_IS_NOT_A_MANIFEST_ITS_AN_INDEX_STRING } from './standard-registry';
 
 
@@ -24,7 +24,7 @@ export abstract class ArtifactRegistry implements Registry {
   abstract readonly installationFolder: Uri;
 
   protected abstract readonly cacheFolder: Uri;
-  protected index = new Index(RegistryIndex);
+  protected index = new Index(ArtifactIndex);
   protected abstract indexYaml: Uri;
 
   get count() {
@@ -44,9 +44,13 @@ export abstract class ArtifactRegistry implements Registry {
   abstract update(): Promise<void>;
 
   async regenerate(): Promise<void> {
+    // reset the index to blank.
+    this.index = new Index(ArtifactIndex);
+
     const repo = this;
     const q = new Queue();
     const session = this.session;
+
     async function processFile(uri: Uri) {
 
       const content = await uri.readUTF8();
@@ -72,7 +76,7 @@ export abstract class ArtifactRegistry implements Registry {
           }
           throw new Error('invalid manifest');
         }
-
+        repo.session.channels.debug(`Inserting ${uri.formatted} into index.`);
         repo.index.insert(amf, repo.cacheFolder.relative(uri));
 
       } catch (e: any) {
@@ -94,15 +98,14 @@ export abstract class ArtifactRegistry implements Registry {
       }
     }
 
-    // reset the index to blank.
-    this.index = new Index(RegistryIndex);
-
     // process the files in the local folder
     await process(this.cacheFolder);
     await q.done;
 
     // we're done inserting values
     this.index.doneInsertion();
+
+    this.loaded = true;
   }
 
   async search(parent: Registries, criteria?: SearchCriteria): Promise<Array<[Registry, string, Array<Artifact>]>> {
