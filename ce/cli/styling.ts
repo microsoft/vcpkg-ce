@@ -58,14 +58,14 @@ function md(text = '', session?: Session): string {
   return '';
 }
 
-const console_log = console['log'];
+const stdout = console['log'];
 
-export let log: (message?: any, ...optionalParams: Array<any>) => void = console_log;
+export let log: (message?: any, ...optionalParams: Array<any>) => void = stdout;
 export let error: (message?: any, ...optionalParams: Array<any>) => void = console.error;
 export let warning: (message?: any, ...optionalParams: Array<any>) => void = console.error;
 export let debug: (message?: any, ...optionalParams: Array<any>) => void = (text) => {
   if (argv.any(arg => arg === '--debug')) {
-    console_log(`${cyan.bold('debug: ')}${text}`);
+    stdout(`${cyan.bold('debug: ')}${text}`);
   }
 };
 
@@ -79,10 +79,10 @@ export function writeException(e: any) {
 }
 
 export function initStyling(commandline: CommandLine, session: Session) {
-  log = (text) => console_log((md(text, session).trim()));
-  error = (text) => console_log(`${red.bold('ERROR: ')}${md(text, session).trim()}`);
-  warning = (text) => console_log(`${yellow.bold('WARNING: ')}${md(text, session).trim()}`);
-  debug = (text) => { if (commandline.debug) { console_log(`${cyan.bold('DEBUG: ')}${md(text, session).trim()}`); } };
+  log = (text) => stdout((md(text, session).trim()));
+  error = (text) => stdout(`${red.bold('ERROR: ')}${md(text, session).trim()}`);
+  warning = (text) => stdout(`${yellow.bold('WARNING: ')}${md(text, session).trim()}`);
+  debug = (text) => { if (commandline.debug) { stdout(`${cyan.bold('DEBUG: ')}${md(text, session).trim()}`); } };
 
   session.channels.on('message', (text: string, context: any, msec: number) => {
     log(text);

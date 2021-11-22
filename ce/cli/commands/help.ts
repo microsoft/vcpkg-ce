@@ -70,7 +70,10 @@ export class HelpCommand extends Command {
     log(blank);
     const max = Math.max(...this.commandLine.commands.map(each => each.command.length));
     for (const command of this.commandLine.commands) {
-
+      if (command.command.startsWith('z-')) {
+        // don't show internal commands
+        continue;
+      }
       log(indent(i`${formatCommand(command.command.padEnd(max))} : ${command.summary}`));
     }
 
