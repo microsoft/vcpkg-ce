@@ -121,14 +121,14 @@ describe('StandardRegistry Tests', () => {
     const start = process.uptime() * 1000;
 
     const registry = local.session.defaultRegistry;
-    local.session.channels.on('debug', (d, x, m) => console.log(`${m}msec : ${d}`));
+    local.session.channels.on('debug', (d, x, m) => SuiteSuiteLocal.log(`${m}msec : ${d}`));
     await registry.regenerate();
     await registry.save();
 
     const arm = registry.where.id.equals('compilers/gnu/gcc/arm-none-eabi').items;
     strict.equal(arm.length, 3, 'should be 3 results');
 
-    local.session.channels.on('debug', (t) => console.log(t));
+    local.session.channels.on('debug', (t) => SuiteSuiteLocal.log(t));
 
     const map = await registry.openArtifacts(arm);
     strict.equal(map.size, 1, 'Should have one pkg id');

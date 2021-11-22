@@ -13,7 +13,7 @@ import { FileStat, FileSystem, FileType, ReadHandle, WriteStreamOptions } from '
  * @param uri the uri to get the scheme for.
  * @returns the scheme, undefined if the uri has no scheme (colon)
  */
-function schemeOf(uri: string) {
+export function schemeOf(uri: string) {
   strict.ok(uri, i`Uri may not be empty`);
   return /^(\w*):/.exec(uri)?.[1];
 }

@@ -11,7 +11,7 @@ import { undo } from './constants';
 import { FileSystem, FileType } from './fs/filesystem';
 import { HttpsFileSystem } from './fs/http-filesystem';
 import { LocalFileSystem } from './fs/local-filesystem';
-import { UnifiedFileSystem } from './fs/unified-filesystem';
+import { schemeOf, UnifiedFileSystem } from './fs/unified-filesystem';
 import { VsixLocalFilesystem } from './fs/vsix-local-filesystem';
 import { i } from './i18n';
 import { AggregateRegistry } from './registries/aggregate-registry';
@@ -110,6 +110,34 @@ export class Session {
   parseUri(uriOrPath: string | Uri): Uri {
     return (typeof uriOrPath === 'string') ? isFilePath(uriOrPath) ? this.fileSystem.file(uriOrPath) : this.fileSystem.parse(uriOrPath) : uriOrPath;
   }
+
+  async parseLocation(location?: string): Promise<Uri | undefined> {
+    if (location) {
+      const scheme = schemeOf(location);
+      // file uri or drive letter
+      if (scheme) {
+        if (scheme.toLowerCase() !== 'file' && scheme.length !== 1) {
+          // anything else with a colon isn't a legal path in any way.
+          return undefined;
+        }
+        // must be a file path of some kind.
+        const uri = this.parseUri(location);
+        return await uri.exists() ? uri : undefined;
+      }
+
+      // is it an absolute path?
+      if (location.startsWith('/') || location.startsWith('\\')) {
+        const uri = this.fileSystem.file(location);
+        return await uri.exists() ? uri : undefined;
+      }
+
+      // is it a path relative to the current directory?
+      const uri = this.currentDirectory.join(location);
+      return await uri.exists() ? uri : undefined;
+    }
+    return undefined;
+  }
+
 
   loadRegistry(registryLocation: Uri | string | undefined, registryKind = 'artifact'): Registry | undefined {
     if (registryLocation) {
@@ -394,7 +422,7 @@ export class Session {
     //
     // (We'll defer actually this until we get to #23: Create Bug Report)
     //
-    // this.FileSystem.on('deleted', (uri) => { console.log(uri) })
+    // this.FileSystem.on('deleted', (uri) => { console.debug(uri) })
   }
 
   async getInstalledArtifacts() {

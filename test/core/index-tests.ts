@@ -6,6 +6,7 @@ import { Index, IndexSchema, SemverKey, StringKey } from '@microsoft/vcpkg-ce/di
 import { Dictionary, keys } from '@microsoft/vcpkg-ce/dist/util/linq';
 import { describe, it } from 'mocha';
 import { SemVer } from 'semver';
+import { SuiteLocal } from './SuiteLocal';
 
 interface TestData {
   info: {
@@ -82,8 +83,8 @@ describe('Index Tests', () => {
       version.greaterThan(new SemVer('0.3.0')).
       items;
 
-    // console.log(results);
-    // console.log(serialize(index.serialize()));
+    // results);
+    // serialize(index.serialize()));
 
     const data = index.serialize();
     const index2 = new Index<TestData, MyIndex>(MyIndex);
@@ -93,7 +94,7 @@ describe('Index Tests', () => {
       version.greaterThan(new SemVer('0.3.0')).
       items;
 
-    console.log(results2);
+    SuiteLocal.log(results2);
   });
 
 });

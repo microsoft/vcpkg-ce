@@ -10,6 +10,8 @@ import { i } from '../i18n';
 import { Session } from '../session';
 import { Uri } from '../util/uri';
 import { ArtifactRegistry } from './ArtifactRegistry';
+import { Index } from './indexer';
+import { ArtifactIndex } from './registry-index';
 
 
 export class RemoteRegistry extends ArtifactRegistry implements Registry {
@@ -51,12 +53,16 @@ export class RemoteRegistry extends ArtifactRegistry implements Registry {
   }
 
   override async load(force?: boolean): Promise<void> {
+
     if (force || !this.loaded) {
       if (!await this.indexYaml.exists()) {
         await this.update();
       }
 
       strict.ok(await this.indexYaml.exists(), `Index file is missing '${this.indexYaml.fsPath}'`);
+
+      // load it fresh.
+      this.index = new Index(ArtifactIndex);
 
       this.session.channels.debug(`Loading registry from '${this.indexYaml.fsPath}'`);
       this.index.deserialize(parse(await this.indexYaml.readUTF8()));

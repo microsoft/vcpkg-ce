@@ -1,19 +1,23 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { sanitizeUri } from '../../artifacts/artifact';
+import { Registry } from '../../artifacts/registry';
 import { i } from '../../i18n';
 import { session } from '../../main';
+import { Registries } from '../../registries/registries';
+import { Uri } from '../../util/uri';
 import { Command } from '../command';
 import { cli } from '../constants';
-import { log, writeException } from '../styling';
-import { Registry } from '../switches/registry';
+import { error, log, writeException } from '../styling';
+import { Project } from '../switches/project';
+import { Registry as RegSwitch } from '../switches/registry';
 import { WhatIf } from '../switches/whatIf';
 
 export class RegenerateCommand extends Command {
   readonly command = 'regenerate';
+  project = new Project(this);
   readonly aliases = ['regen'];
-  readonly regSwitch = new Registry(this, { required: true });
+  readonly regSwitch = new RegSwitch(this, { required: true });
   seeAlso = [];
   argumentsHelp = [];
 
@@ -29,27 +33,49 @@ export class RegenerateCommand extends Command {
   }
 
   override async run() {
-    const all = new Set([...this.regSwitch.values, ...this.inputs].map(each => sanitizeUri(each)));
+    let registries: Registries = await this.regSwitch.loadRegistries(session);
+    registries = (await this.project.manifest)?.registries ?? registries;
 
-    const registries = await this.regSwitch.loadRegistries(session, this.inputs);
-
-    for (const registryName of all) {
+    for (const registryNameOrLocation of this.inputs) {
+      let registry: Registry | undefined;
       try {
-        // regenerate a named registry
-        const registry = registries.getRegistry(registryName);
-        if (registry) {
-          log(i`Regenerating index for ${registryName}`);
-          await registry.regenerate();
-          await registry.save();
-          log(i`Regeneration complete. Index contains ${registry.count} metadata files`);
+        if (registries.has(registryNameOrLocation)) {
+          // check for named registries first.
+          registry = registries.getRegistry(registryNameOrLocation);
+          await registry?.load();
+        } else {
+          // see if the name is a location
+          const location = await session.parseLocation(registryNameOrLocation);
+          registry = location ?
+            session.loadRegistry(location, 'artifact') :  // a folder
+            registries.getRegistry(registryNameOrLocation); // a registry name or other location.
         }
+        if (registry) {
+          if (Uri.isInvalid(registry.location)) {
+            error(i`Registry: '${registryNameOrLocation}' does not have an index to regenerate.`);
+            return false;
+          }
+          log(i`Regenerating index for ${registry.location.formatted}`);
+          await registry.regenerate();
+          if (registry.count) {
+            await registry.save();
+            log(i`Regeneration complete. Index contains ${registry.count} metadata files`);
+            continue;
+          }
+          // looks like  the registry contained no items
+          error(i`Registry: '${registry.location.formatted}' contains no artifacts.`);
+          continue;
+        }
+
+        error(i`Unrecognized registry: ${registryNameOrLocation}`);
+        return false;
+
       } catch (e) {
-        log(i`Regeneration failed for ${registryName.toString()}`);
+        log(i`Regeneration failed for ${registryNameOrLocation.toString()}`);
         writeException(e);
         return false;
       }
     }
-
     return true;
   }
 }

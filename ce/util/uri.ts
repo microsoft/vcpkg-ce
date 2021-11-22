@@ -42,6 +42,9 @@ export class Uri implements URI {
 
   static readonly invalid = new Uri(<any>undefined, URI.parse('invalid:'));
 
+  static isInvalid(uri?: Uri) {
+    return uri === undefined || Uri.invalid === uri;
+  }
   /**
   * scheme is the 'https' part of 'https://www.msft.com/some/path?query#fragment'.
   * The part before the first colon.
@@ -336,3 +339,4 @@ export function isFilePath(uriOrPath?: Uri | string): boolean {
   }
   return false;
 }
+

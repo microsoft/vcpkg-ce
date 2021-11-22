@@ -36,22 +36,22 @@ describe('Amf', () => {
     strict.ok(doc.isFormatValid, 'Ensure it is valid yaml');
     strict.ok(doc.isValid, 'Is it valid?');
 
-    console.log(doc.content);
+    SuiteLocal.log(doc.content);
   });
 
   it('load/persist environment.yaml', async () => {
     const content = await (await readFile(join(rootFolder(), 'resources', 'environment.yaml'))).toString('utf-8');
     const doc = await MetadataFile.parseConfiguration('./cenvironment.yaml', content, local.session);
 
-    console.log(doc.content);
+    SuiteLocal.log(doc.content);
     for (const each of doc.validationErrors) {
-      console.log(each);
+      SuiteLocal.log(each);
     }
 
     strict.ok(doc.isFormatValid, 'Ensure it\'s valid yaml');
     strict.ok(doc.isValid, 'better be valid!');
 
-    console.log(doc.content);
+    SuiteLocal.log(doc.content);
   });
 
   it('profile checks', async () => {
@@ -59,14 +59,14 @@ describe('Amf', () => {
     const doc = await MetadataFile.parseConfiguration('./sample1.yaml', content, local.session);
 
     strict.ok(doc.isFormatValid, 'Ensure it\'s valid yaml');
-    console.log(doc.validationErrors);
+    SuiteLocal.log(doc.validationErrors);
     strict.ok(doc.isValid, 'better be valid!');
 
     // fixme: validate inputs again.
     // strict.throws(() => doc.info.version = '4.1', 'Setting invalid version should throw');
     // strict.equal(doc.info.version = '4.1.0', '4.1.0', 'Version should set correctly');
 
-    console.log(doc.contacts.get('Bob Smith'));
+    SuiteLocal.log(doc.contacts.get('Bob Smith'));
 
     strict.sequenceEqual(doc.contacts.get('Bob Smith')!.roles, ['fallguy', 'otherguy'], 'Should return the two roles');
     doc.contacts.get('Bob Smith')!.roles.delete('fallguy');
@@ -80,10 +80,10 @@ describe('Amf', () => {
     strict.sequenceEqual(doc.contacts.get('Bob Smith')!.roles, ['otherguy', 'the dude'], 'Should return only two roles');
 
     const k = doc.contacts.add('James Brown');
-    console.log(doc.contacts.keys);
+    SuiteLocal.log(doc.contacts.keys);
 
     k.email = 'jim@contoso.net';
-    console.log(doc.contacts.keys);
+    SuiteLocal.log(doc.contacts.keys);
 
     strict.equal(doc.contacts.keys.length, 3, 'Should have 3 contacts');
 
@@ -95,7 +95,7 @@ describe('Amf', () => {
     doc.contacts.delete('James Brown'); // this is ok.
 
     // version can be coerced to be a string (via tostring)
-    console.log(doc.requires.get('foo/bar/bin')?.raw);
+    SuiteLocal.log(doc.requires.get('foo/bar/bin')?.raw);
     strict.equal(doc.requires.get('foo/bar/bin')?.raw == '~2.0.0', true, 'Version must match');
 
     // can we get the normalized range?
@@ -135,7 +135,7 @@ describe('Amf', () => {
     strict.ok(isNupkg(install), 'the install type should be nupkg');
     strict.equal((install).location, 'floobaloo/1.2.3', 'should have correct location');
 */
-    console.log(doc.toString());
+    SuiteLocal.log(doc.toString());
   });
 
   it('read invalid yaml file', async () => {
@@ -165,7 +165,7 @@ describe('Amf', () => {
 
     strict.ok(doc.isFormatValid, 'Ensure it is valid yaml');
 
-    console.log(doc.validationErrors);
+    SuiteLocal.log(doc.validationErrors);
     strict.equal(doc.validationErrors.length, 2, `Expecting two errors, found: ${JSON.stringify(doc.validationErrors, null, 2)}`);
   });
 });
