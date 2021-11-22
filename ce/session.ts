@@ -27,11 +27,13 @@ import { isYAML } from './yaml/yaml';
 
 const defaultConfig =
   `{
-  "registries": {
-    "kind": "artifact",
-    "name": "microsoft",
-    "location": "https://aka.ms/vcpkg-ce-default"
-  }
+  "registries": [
+    {
+      "kind": "artifact",
+      "name": "microsoft",
+      "location": "https://aka.ms/vcpkg-ce-default"
+    }
+  ]
 }
 `;
 
