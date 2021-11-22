@@ -66,7 +66,8 @@ async function main() {
   // start up the session and init the channel listeners.
   await session.init();
 
-  debug(`Anonymous Telemetry Enabled: ${session.telemetryEnabled}`);
+  const telemetryEnabled = await session.telemetryEnabled;
+  debug(`Anonymous Telemetry Enabled: ${telemetryEnabled}`);
   // find a project profile.
 
   const zApplyVsMan = new ApplyVsManCommand(commandline);
@@ -137,4 +138,3 @@ async function main() {
 
 // eslint-disable-next-line @typescript-eslint/no-floating-promises
 main();
-
