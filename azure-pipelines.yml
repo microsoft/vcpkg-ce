@@ -15,7 +15,7 @@ pr: none
 trigger:
   branches:
     include:
-      - main
+      - test
 
 pool:
   name: VSEngSS-MicroBuild2019-1ES
@@ -29,7 +29,7 @@ variables:
   ${{ if ne(parameters.SignTypeOverride, 'default') }}:
     SignType: ${{ parameters.SignTypeOverride }}
   ${{ if and(eq(parameters.SignTypeOverride, 'default'), eq(variables['Build.SourceBranchName'], 'main')) }}:
-    SignType: test # set to real when we're ready
+    SignType: real # set to real when we're ready
   ${{ if and(eq(parameters.SignTypeOverride, 'default'), not(eq(variables['Build.SourceBranchName'], 'main'))) }}:
     SignType: test
   # This variable will be expanded later and allows us to deploy to the vcpkg-ce repo.
@@ -69,6 +69,7 @@ steps:
     inputs:
       targetType: F
       targetArgument: $(Pipeline.Workspace)\s
+      optionsUEPATH: '$(Pipeline.Workspace)\s\PolicheckExclusion.xml'
 
   # Build and test the project.
   - task: UseNode@1
@@ -109,7 +110,6 @@ steps:
     displayName: Detect components
     
     inputs:
-      
       ignoreDirectories: vcpkg-ce/common/temp
 
   # Sign JavaScript and PowerShell files.
