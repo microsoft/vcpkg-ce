@@ -44,7 +44,7 @@ steps:
 
   - script: |
       rmdir /s /q  $(Pipeline.Workspace)\s
-      git clone git@github.com:microsoft/vcpkg-ce.git  $(Pipeline.Workspace)\s
+      git clone git@github.com:microsoft/vcpkg-ce.git  $(Pipeline.Workspace)\s -b testing
     displayName: Clone deployment repo
     workingDirectory:  $(Pipeline.Workspace)
 
