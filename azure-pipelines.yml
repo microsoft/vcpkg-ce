@@ -15,7 +15,7 @@ pr: none
 trigger:
   branches:
     include:
-      - test
+      - main
 
 pool:
   name: VSEngSS-MicroBuild2019-1ES
