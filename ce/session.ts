@@ -81,6 +81,8 @@ export class Session {
   readonly defaultRegistry: AggregateRegistry;
   private readonly registries = new Registries(this);
 
+  telemetryEnabled = false;
+
   constructor(currentDirectory: string, public readonly context: Context, public readonly settings: Dictionary<string>, public readonly environment: NodeJS.ProcessEnv) {
     this.fileSystem = new UnifiedFileSystem(this).
       register('file', new LocalFileSystem(this)).
@@ -228,11 +230,10 @@ export class Session {
         return ['default', id];
     }
     return <[string, string]>parts;
-
   }
 
-  get telemetryEnabled(): Promise<boolean> {
-    return this.homeFolder.exists('vcpkg.disable-metrics').then((exists) => !exists);
+  get vcpkgInstalled(): Promise<boolean> {
+    return this.homeFolder.exists('.vcpkg-root');
   }
 
   async saveConfig() {
@@ -284,6 +285,17 @@ export class Session {
         }
       }
     }
+
+    if (this.context['sendmetrics']) {
+      // is it forced to be on?
+      this.telemetryEnabled = true;
+    } else {
+      // otherwise, check for the file that turns it off.
+      if (await this.vcpkgInstalled) {
+        this.telemetryEnabled = ! await this.homeFolder.exists('vcpkg.disable-metrics');
+      }
+    }
+
     return this;
   }
 

@@ -3,6 +3,7 @@
 
 import { ArtifactMap, ProjectManifest } from '../artifacts/artifact';
 import { i } from '../i18n';
+import { trackActivation } from '../insights';
 import { session } from '../main';
 import { Uri } from '../util/uri';
 import { activateArtifacts, installArtifacts, showArtifacts } from './artifacts';
@@ -39,6 +40,7 @@ export async function activateProject(project: ProjectManifest, options?: { forc
   }
 
   if (await activate(artifacts, options)) {
+    trackActivation();
     log(blank);
     log(i`Project ${projectFile(project.metadata.context.folder)} activated`);
     return true;
