@@ -6,7 +6,7 @@
 
 
 import { defaultClient, DistributedTracingModes, setup } from 'applicationinsights';
-import { version } from 'os';
+import { createHash } from 'crypto';
 import { session } from './main';
 import { Version } from './version';
 
@@ -25,6 +25,9 @@ export const insights = setup('b4e88960-4393-4dd9-ab8e-97e8fe6d7603').
   setSendLiveMetrics(false).
   setUseDiskRetryCaching(false).
   start();
+
+defaultClient.context.keys.applicationVersion = Version;
+
 
 // todo: This will be refactored to allow appInsights to be called out-of-proc from the main process.
 //       in order to not potentially slow down or block on activation/etc.
@@ -45,19 +48,13 @@ defaultClient.addTelemetryProcessor((envelope, contextObjects) => {
 
 export function trackEvent(name: string, properties: { [key: string]: string } = {}) {
   session.channels.debug(`Triggering Telemetry Event ce.${name}`);
-  defaultClient.trackEvent({
-    name: `ce.${name}`,
-    time: new Date(),
 
-    tagOverrides: {
-      'ai.device.os': process.platform,
-      'ai.device.osVersion': version(),
-    },
+  defaultClient.trackEvent({
+    name: `ce/${name}`,
+    time: new Date(),
 
     properties: {
       ...properties,
-      'kind': 'vcpkg-ce',
-      'ce.version': Version,
     }
   });
 }
@@ -68,7 +65,7 @@ export function trackActivation() {
 
 export function trackAcquire(artifactId: string, artifactVersion: string) {
   return trackEvent('acquire', {
-    'artifactId': artifactId,
+    'artifactId': createHash('sha256').update(artifactId, 'ascii').digest('hex'),
     'artifactVersion': artifactVersion
   });
 }
