@@ -27,7 +27,7 @@ import { blank, cli, product } from './cli/constants';
 import { command as formatCommand, hint } from './cli/format';
 import { debug, error, initStyling, log } from './cli/styling';
 import { i, setLocale } from './i18n';
-import { trackEvent } from './insights';
+import { flushTelemetry, trackEvent } from './insights';
 import { Session } from './session';
 import { Version as cliVersion } from './version';
 
@@ -132,6 +132,8 @@ async function main() {
   } catch (e) {
     error(e);
     return process.exitCode = 1;
+  } finally {
+    flushTelemetry();
   }
   return process.exitCode = (result ? 0 : 1);
 }

@@ -5,6 +5,7 @@ import { MultiBar, SingleBar } from 'cli-progress';
 import { Activation } from '../artifacts/activation';
 import { Artifact, ArtifactMap } from '../artifacts/artifact';
 import { i } from '../i18n';
+import { trackAcquire } from '../insights';
 import { Registries } from '../registries/registries';
 import { artifactIdentity, artifactReference } from './format';
 import { Table } from './markdown-table';
@@ -120,6 +121,9 @@ export async function installArtifacts(artifacts: Iterable<Artifact>, options?: 
       });
       // remember what was actually installed
       installed.set(artifact, actuallyInstalled);
+      if (actuallyInstalled) {
+        trackAcquire(artifact.id, artifact.version);
+      }
     } catch (e: any) {
       bar.stop();
       debug(e);
