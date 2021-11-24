@@ -26,15 +26,15 @@ import { isFilePath, Uri } from './util/uri';
 import { isYAML } from './yaml/yaml';
 
 const defaultConfig =
-  `# Global configuration
-
-registries:
-  - kind: artifact
-    name: microsoft
-    location: https://aka.ms/vcpkg-ce-default
-
-global:
-  send-anonymous-telemetry: true
+  `{
+  "registries": [
+    {
+      "kind": "artifact",
+      "name": "microsoft",
+      "location": "https://aka.ms/vcpkg-ce-default"
+    }
+  ]
+}
 `;
 
 const profileName = ['vcpkg-configuration.json', 'vcpkg-configuration.yaml', 'environment.yaml', 'environment.yml', 'environment.json'];
@@ -231,8 +231,8 @@ export class Session {
 
   }
 
-  get telemetryEnabled() {
-    return !!this.configuration.globalSettings.get('send-anonymous-telemetry');
+  get telemetryEnabled(): Promise<boolean> {
+    return this.homeFolder.exists('vcpkg.disable-metrics').then((exists) => !exists);
   }
 
   async saveConfig() {
