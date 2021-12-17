@@ -1,6 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
+import * as cp from 'child_process';
 import { log } from '../cli/styling';
 import { acquireArtifactFile, AcquireEvents, AcquireOptions, git, nuget } from '../fs/acquire';
 import { OutputOptions, TarBzUnpacker, TarGzUnpacker, TarUnpacker, Unpacker, UnpackEvents, ZipUnpacker } from '../fs/archive';
@@ -72,6 +73,33 @@ export async function installGit(session: Session, artifact: InstallArtifactInfo
 
   if (install.espidf) {
     await artifact.targetLocation.createDirectory('.espressif');
+    // TODO: look into making sure idf_tools.py updates the system's python installation
+    // with the required modules.
+    cp.execSync(
+      `${artifact.targetLocation.fsPath.toString()}/tools/idf_tools.py install`,
+      {
+        env:
+        {
+          ...process.env,
+          IDF_PATH: artifact.targetLocation.fsPath.toString(),
+          IDF_TOOLS_PATH: `${artifact.targetLocation.fsPath.toString()}/.espressif`
+        },
+        stdio: 'inherit'
+      }
+    );
+
+    cp.execSync(
+      `${artifact.targetLocation.fsPath.toString()}/tools/idf_tools.py export`,
+      {
+        env:
+        {
+          ...process.env,
+          IDF_PATH: artifact.targetLocation.fsPath.toString(),
+          IDF_TOOLS_PATH: `${artifact.targetLocation.fsPath.toString()}/.espressif`
+        },
+        stdio: 'inherit'
+      }
+    );
     log('espidf commands post-git are not implemented');
   }
 }
