@@ -1,7 +1,6 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { Strings } from '../../collections';
 import { Installer } from './Installer';
 
 /**
@@ -12,10 +11,10 @@ import { Installer } from './Installer';
 
 export interface GitInstaller extends Installer {
   /** the git repo location to be cloned */
-  location: Strings;
+  location: string;
 
   /** optionally, a tag/branch to be checked out */
-  tag?: string;
+  commit?: string;
 
   /**
    * determines if the whole repo is cloned.
@@ -34,4 +33,10 @@ export interface GitInstaller extends Installer {
    *  - when true, indicates that the repo should be cloned recursively.
    */
   recurse?: boolean;
+
+  /**
+   * determines if the thing being installed is esp-idf, and if so, it should do some other installations after
+   * the git install.
+   */
+  espidf?: boolean;
 }

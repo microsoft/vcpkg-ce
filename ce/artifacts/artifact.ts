@@ -7,6 +7,7 @@ import { MetadataFile } from '../amf/metadata-file';
 import { AcquireEvents } from '../fs/acquire';
 import { UnpackEvents } from '../fs/archive';
 import { i } from '../i18n';
+import { GitInstaller } from '../interfaces/metadata/installers/git';
 import { Installer } from '../interfaces/metadata/installers/Installer';
 import { NupkgInstaller } from '../interfaces/metadata/installers/nupkg';
 import { UnTarInstaller } from '../interfaces/metadata/installers/tar';
@@ -16,7 +17,7 @@ import { Session } from '../session';
 import { linq } from '../util/linq';
 import { Uri } from '../util/uri';
 import { Activation } from './activation';
-import { installNuGet, installUnTar, installUnZip } from './installer-impl';
+import { installGit, installNuGet, installUnTar, installUnZip } from './installer-impl';
 import { SetOfDemands } from './SetOfDemands';
 
 export type Selections = Map<string, string>;
@@ -116,7 +117,8 @@ export class Artifact extends ArtifactBase {
         await installUnTar(this.session, target, <UnTarInstaller>installInfo, options);
         break;
       case 'git':
-        throw new Error('not implemented');
+        await installGit(this.session, target, <GitInstaller>installInfo, options);
+        break;
       default:
         fail(i`Unknown installer type ${installInfo!.installerKind}`);
     }

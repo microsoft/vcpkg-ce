@@ -1,9 +1,12 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
 import { strict } from 'assert';
+import * as cp from 'child_process';
 import { pipeline as origPipeline } from 'stream';
 import { promisify } from 'util';
+import { log } from '../cli/styling';
 import { i } from '../i18n';
 import { Session } from '../session';
 import { Credentials } from '../util/credentials';
@@ -254,7 +257,46 @@ export async function nuget(session: Session, pkg: string, outputFilename: strin
 }
 
 /** @internal */
-export async function git(session: Session, repo: Uri, progress: Progress, options?: AcquireOptions): Promise<void> {
+export async function git(session: Session, repo: Uri, targetLocation: Uri, options?: AcquireOptions, commit?: string, recurse?: boolean, full?: boolean): Promise<void> {
   // clone the uri
   // save it to the cache
+  try {
+    const command = [
+      'cd', targetLocation.fsPath.toString(), '&&',
+      'git init &&',
+      'git remote add origin', repo.fsPath.includes(' ') ? encodeURI(repo.toString()) : repo.toString(), '&&',
+      'git pull origin'
+    ];
+
+    if (commit !== undefined) {
+      command.push(commit);
+    }
+    else {
+      command.push('master');
+    }
+
+    if (full !== undefined && full !== true) {
+      command.push('--depth=1');
+    }
+
+    if (recurse !== undefined && recurse === true) {
+      command.push('&& git submodule update --init --recursive');
+    }
+
+    const command_string = command.toString().replaceAll(',', ' ');
+
+    if (!await targetLocation.exists(targetLocation)) {
+      await targetLocation.createDirectory();
+    }
+
+    const foo: cp.ChildProcess = cp.exec(
+      command_string,
+      (error, stdout: string, stderr: string) => {
+        log(stdout);
+        log(stderr);
+      }
+    );
+  } catch (err) {
+    throw new Error('Failure to run git');
+  }
 }

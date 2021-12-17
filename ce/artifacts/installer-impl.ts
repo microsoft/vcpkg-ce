@@ -1,8 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { acquireArtifactFile, AcquireEvents, AcquireOptions, nuget } from '../fs/acquire';
+import { log } from '../cli/styling';
+import { acquireArtifactFile, AcquireEvents, AcquireOptions, git, nuget } from '../fs/acquire';
 import { OutputOptions, TarBzUnpacker, TarGzUnpacker, TarUnpacker, Unpacker, UnpackEvents, ZipUnpacker } from '../fs/archive';
+import { GitInstaller } from '../interfaces/metadata/installers/git';
 import { Installer } from '../interfaces/metadata/installers/Installer';
 import { NupkgInstaller } from '../interfaces/metadata/installers/nupkg';
 import { UnTarInstaller } from '../interfaces/metadata/installers/tar';
@@ -61,6 +63,18 @@ export async function installNuGet(session: Session, artifact: InstallArtifactIn
     applyUnpackOptions(options, install));
 }
 
+export async function installGit(session: Session, artifact: InstallArtifactInfo, install: GitInstaller, options: { events?: Partial<UnpackEvents & AcquireEvents> }): Promise<void> {
+  // at this point, we have all we need to pass to some kind of git api
+  // url
+  // commit id (if passed)
+  // options of recursive espidf, full
+  await git(session, session.parseUri(install.location), artifact.targetLocation, options, install.commit, install.recurse, install.full);
+
+  if (install.espidf) {
+    log('espidf commands post-git are not implemented');
+  }
+  return;
+}
 
 async function acquireInstallArtifactFile(session: Session, targetFile: string, locations: Array<string>, options: AcquireOptions, install: Verifiable) {
   const file = await acquireArtifactFile(
