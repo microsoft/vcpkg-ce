@@ -71,9 +71,9 @@ export async function installGit(session: Session, artifact: InstallArtifactInfo
   await git(session, session.parseUri(install.location), artifact.targetLocation, options, install.commit, install.recurse, install.full);
 
   if (install.espidf) {
+    await artifact.targetLocation.createDirectory('.espressif');
     log('espidf commands post-git are not implemented');
   }
-  return;
 }
 
 async function acquireInstallArtifactFile(session: Session, targetFile: string, locations: Array<string>, options: AcquireOptions, install: Verifiable) {

@@ -6,7 +6,6 @@ import { strict } from 'assert';
 import * as cp from 'child_process';
 import { pipeline as origPipeline } from 'stream';
 import { promisify } from 'util';
-import { log } from '../cli/styling';
 import { i } from '../i18n';
 import { Session } from '../session';
 import { Credentials } from '../util/credentials';
@@ -289,12 +288,9 @@ export async function git(session: Session, repo: Uri, targetLocation: Uri, opti
       await targetLocation.createDirectory();
     }
 
-    const foo: cp.ChildProcess = cp.exec(
+    cp.execSync(
       command_string,
-      (error, stdout: string, stderr: string) => {
-        log(stdout);
-        log(stderr);
-      }
+      {stdio: 'inherit'}
     );
   } catch (err) {
     throw new Error('Failure to run git');
