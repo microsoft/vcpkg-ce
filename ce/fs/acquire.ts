@@ -261,37 +261,33 @@ export async function git(session: Session, repo: Uri, targetLocation: Uri, opti
   // save it to the cache
   try {
     const command = [
-      'cd', targetLocation.fsPath.toString(), '&&',
-      'git init &&',
-      'git remote add origin', repo.fsPath.includes(' ') ? encodeURI(repo.toString()) : repo.toString(), '&&',
-      'git pull origin'
+      'git clone', repo.toString(),`${targetLocation.fsPath.toString()}\\${repo.toString().split('/').last}`,
     ];
-
-    if (commit !== undefined) {
-      command.push(commit);
-    }
-    else {
-      command.push('master');
-    }
 
     if (full !== undefined && full !== true) {
       command.push('--depth=1');
     }
 
     if (recurse !== undefined && recurse === true) {
-      command.push('&& git submodule update --init --recursive');
+      command.push('--recursive');
+    }
+
+    if (commit !== undefined) {
+      command.push('&& cd', `${targetLocation.fsPath.toString()}\\${repo.toString().split('/').last}`);
+      command.push('&& git reset --hard ' + commit);
     }
 
     const command_string = command.toString().replaceAll(',', ' ');
-
     if (!await targetLocation.exists(targetLocation)) {
       await targetLocation.createDirectory();
     }
 
+    // investigate whether I can run exec rather execSync
     cp.execSync(
       command_string,
       {stdio: 'inherit'}
     );
+
   } catch (err) {
     throw new Error('Failure to run git');
   }

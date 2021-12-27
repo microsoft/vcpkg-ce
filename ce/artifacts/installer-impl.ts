@@ -69,39 +69,36 @@ export async function installGit(session: Session, artifact: InstallArtifactInfo
   // url
   // commit id (if passed)
   // options of recursive espidf, full
-  await git(session, session.parseUri(install.location), artifact.targetLocation, options, install.commit, install.recurse, install.full);
-
-  if (install.espidf) {
-    await artifact.targetLocation.createDirectory('.espressif');
-    // TODO: look into making sure idf_tools.py updates the system's python installation
-    // with the required modules.
-    cp.execSync(
-      `${artifact.targetLocation.fsPath.toString()}/tools/idf_tools.py install`,
-      {
-        env:
-        {
+  await git(session, session.parseUri(install.location), artifact.targetLocation, options, install.commit, install.recurse, install.full).then(async () => {
+    if (install.espidf) {
+      // create the .espressif folder for the espressif installation
+      await artifact.targetLocation.createDirectory('.espressif');
+      // TODO: look into making sure idf_tools.py updates the system's python installation
+      // with the required modules.
+      const options: cp.ExecSyncOptionsWithBufferEncoding = {
+        env: {
           ...process.env,
-          IDF_PATH: artifact.targetLocation.fsPath.toString(),
+          IDF_PATH: `${artifact.targetLocation.fsPath.toString()}/esp-idf`,
           IDF_TOOLS_PATH: `${artifact.targetLocation.fsPath.toString()}/.espressif`
         },
         stdio: 'inherit'
-      }
-    );
+      };
 
-    cp.execSync(
-      `${artifact.targetLocation.fsPath.toString()}/tools/idf_tools.py export`,
-      {
-        env:
-        {
-          ...process.env,
-          IDF_PATH: artifact.targetLocation.fsPath.toString(),
-          IDF_TOOLS_PATH: `${artifact.targetLocation.fsPath.toString()}/.espressif`
-        },
-        stdio: 'inherit'
-      }
-    );
-    log('espidf commands post-git are not implemented');
-  }
+      const esp_idf = `${artifact.targetLocation.fsPath.toString()}/esp-idf`;
+
+      cp.execSync(
+        `${esp_idf}/tools/idf_tools.py install`,
+        options
+      );
+
+      cp.execSync(
+        `${esp_idf}/tools/idf_tools.py export`,
+        options
+      );
+
+      log('espidf commands post-git are not implemented');
+    }
+  });
 }
 
 async function acquireInstallArtifactFile(session: Session, targetFile: string, locations: Array<string>, options: AcquireOptions, install: Verifiable) {
