@@ -87,12 +87,17 @@ export async function installGit(session: Session, artifact: InstallArtifactInfo
       const esp_idf = `${artifact.targetLocation.fsPath.toString()}/esp-idf`;
 
       cp.execSync(
-        `${esp_idf}/tools/idf_tools.py install`,
+        `python ${esp_idf}/tools/idf_tools.py install`,
         options
       );
 
       cp.execSync(
-        `${esp_idf}/tools/idf_tools.py export`,
+        `python ${esp_idf}/tools/idf_tools.py install-python-env`,
+        options
+      );
+
+      cp.execSync(
+        `python ${esp_idf}/tools/idf_tools.py export`,
         options
       );
 
