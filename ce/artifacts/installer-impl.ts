@@ -5,6 +5,7 @@ import { ProcessEnvOptions } from 'child_process';
 import { log } from '../cli/styling';
 import { acquireArtifactFile, AcquireEvents, AcquireOptions, git, nuget } from '../fs/acquire';
 import { OutputOptions, TarBzUnpacker, TarGzUnpacker, TarUnpacker, Unpacker, UnpackEvents, ZipUnpacker } from '../fs/archive';
+import { CloneEvents } from '../fs/clone';
 import { GitInstaller } from '../interfaces/metadata/installers/git';
 import { Installer } from '../interfaces/metadata/installers/Installer';
 import { NupkgInstaller } from '../interfaces/metadata/installers/nupkg';
@@ -37,6 +38,8 @@ function artifactFileName(artifact: InstallArtifactInfo, install: Installer, ext
   return result.replace(/[^\w]+/g, '.');
 }
 
+
+// TODO: Investigate bugs with ...options having the large yaml object underneath.
 function applyAcquireOptions(options: AcquireOptions, install: Verifiable): AcquireOptions {
   if (install.sha256) {
     return { ...options, algorithm: 'sha256', value: install.sha256 };
@@ -65,16 +68,20 @@ export async function installNuGet(session: Session, artifact: InstallArtifactIn
     applyUnpackOptions(options, install));
 }
 
-export async function installGit(session: Session, artifact: InstallArtifactInfo, install: GitInstaller, options: { events?: Partial<UnpackEvents & AcquireEvents> }): Promise<void> {
+export async function installGit(session: Session, artifact: InstallArtifactInfo, install: GitInstaller, options: { events?: Partial<CloneEvents & AcquireEvents> }): Promise<void> {
   // at this point, we have all we need to pass to some kind of git api
   // url
   // commit id (if passed)
   // options of recursive espidf, full
-  await git(session, session.parseUri(install.location), artifact.targetLocation, options, options.events, install.subdirectory?.trim(), install.commit, install.recurse, install.full).then(async () => {
-    if (install.espidf) {
-      await installEspIdf(artifact);
-    }
-  });
+  await git(
+    session,
+    session.parseUri(install.location),
+    artifact.targetLocation,
+    {events: options.events, commit: install.commit, recurse: install.recurse, full: install.full, subdirectory: install.subdirectory});
+
+  if (install.espidf) {
+    await installEspIdf(artifact);
+  }
 }
 
 async function installEspIdf(artifact: InstallArtifactInfo) {
@@ -92,13 +99,12 @@ async function installEspIdf(artifact: InstallArtifactInfo) {
 
   const esp_idf = `${artifact.targetLocation.fsPath.toString()}/esp-idf`;
 
-  const command = ['python.exe', `${esp_idf}/tools/idf_tools.py`, 'install'];
-  command.push('&& python.exe', `${esp_idf}/tools/idf_tools.py`, 'install-python-env');
-  command.push('&& python.exe', `${esp_idf}/tools/idf_tools.py`, 'export');
+  const command = 'python.exe';
+  const args = [`${esp_idf}/tools/idf_tools.py`, 'install', 'install-python-env'];
 
-  await exec_cmd.execute_shell(command.toString().replaceAll(',', ' '), undefined, options);
+  await exec_cmd.execute_command(command, args, undefined, options);
 
-  log('espidf commands post-git are not implemented');
+  log('installing espidf commands post-git are not implemented');
 }
 
 async function acquireInstallArtifactFile(session: Session, targetFile: string, locations: Array<string>, options: AcquireOptions, install: Verifiable) {
