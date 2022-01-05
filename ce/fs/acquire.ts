@@ -3,7 +3,6 @@
 // Licensed under the MIT License.
 
 import { strict } from 'assert';
-import * as cp from 'child_process';
 import { pipeline as origPipeline } from 'stream';
 import { promisify } from 'util';
 import { i } from '../i18n';
@@ -11,8 +10,10 @@ import { Session } from '../session';
 import { Credentials } from '../util/credentials';
 import { ExtendedEmitter } from '../util/events';
 import { RemoteFileUnavailable } from '../util/exceptions';
+import * as exec_cmd from '../util/exec-cmd';
 import { Algorithm, Hash } from '../util/hash';
 import { Uri } from '../util/uri';
+import { UnpackEvents } from './archive';
 import { get, getStream, RemoteFile, resolveRedirect } from './https';
 import { Progress, ProgressTrackingStream } from './streams';
 
@@ -256,13 +257,16 @@ export async function nuget(session: Session, pkg: string, outputFilename: strin
 }
 
 /** @internal */
-export async function git(session: Session, repo: Uri, targetLocation: Uri, options?: AcquireOptions, commit?: string, recurse?: boolean, full?: boolean): Promise<void> {
+export async function git(session: Session, repo: Uri, targetLocation: Uri, options?: AcquireOptions, events?: Partial<UnpackEvents & AcquireEvents>, subdirectory?: string, commit?: string, recurse?: boolean, full?: boolean): Promise<void> {
   // clone the uri
   // save it to the cache
   try {
-    const command = [
-      'git clone', repo.toString(),`${targetLocation.fsPath.toString()}\\${repo.toString().split('/').last}`,
+    const directoryLocation = `${targetLocation.fsPath.toString()}/${subdirectory ? subdirectory : ''}`;
+
+    const command: Array<string> = [
+      'git.exe', 'clone', repo.toString(), directoryLocation,
     ];
+    command.push('--progress');
 
     if (full !== undefined && full !== true) {
       command.push('--depth=1');
@@ -273,21 +277,44 @@ export async function git(session: Session, repo: Uri, targetLocation: Uri, opti
     }
 
     if (commit !== undefined) {
-      command.push('&& cd', `${targetLocation.fsPath.toString()}\\${repo.toString().split('/').last}`);
-      command.push('&& git reset --hard ' + commit);
+      command.push(`&& git.exe -C ${directoryLocation} reset --hard`, commit);
     }
 
-    const command_string = command.toString().replaceAll(',', ' ');
-    if (!await targetLocation.exists(targetLocation)) {
-      await targetLocation.createDirectory();
-    }
+    let completion_percentage = 0;
+    let last_progress_percent = 0;
+    let current_progress_percent = 0;
+    const regex = /\s([0-9]*?)%/;
+    events?.progress?.(0);
 
-    // investigate whether I can run exec rather execSync
-    cp.execSync(
-      command_string,
-      {stdio: 'inherit'}
-    );
-
+    // command is passed through as one string, since there is a possibility of commands being chained together
+    // if shell is true, the execute command will tell spawn that it should spawn with a shell, not just with a
+    // command
+    const git_results = await exec_cmd.execute_shell(command.toString().replaceAll(',', ' '), {
+      onStdErrData: (chunk: any) => {
+        chunk.toString().split('\n').forEach((line: string) => {
+          const match_array = line.match(regex);
+          if (match_array !== null) {
+            current_progress_percent = parseInt(match_array[1].toString());
+            if (current_progress_percent === 100 || current_progress_percent < last_progress_percent) {
+              if (completion_percentage < 50) {
+                completion_percentage += 10;
+              }
+              else if (completion_percentage < 75) {
+                completion_percentage += 5;
+              }
+              else if (completion_percentage < 95) {
+                completion_percentage += 3;
+              }
+              events?.progress?.(completion_percentage);
+            }
+            last_progress_percent = current_progress_percent;
+          }
+        });
+      },
+      onClose: () => {
+        events?.progress?.(100);
+      }
+    });
   } catch (err) {
     throw new Error('Failure to run git');
   }

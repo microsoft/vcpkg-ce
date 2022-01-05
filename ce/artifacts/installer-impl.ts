@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import * as cp from 'child_process';
+import { ProcessEnvOptions } from 'child_process';
 import { log } from '../cli/styling';
 import { acquireArtifactFile, AcquireEvents, AcquireOptions, git, nuget } from '../fs/acquire';
 import { OutputOptions, TarBzUnpacker, TarGzUnpacker, TarUnpacker, Unpacker, UnpackEvents, ZipUnpacker } from '../fs/archive';
@@ -13,6 +13,7 @@ import { UnpackSettings } from '../interfaces/metadata/installers/unpack-setting
 import { Verifiable } from '../interfaces/metadata/installers/verifiable';
 import { UnZipInstaller } from '../interfaces/metadata/installers/zip';
 import { Session } from '../session';
+import * as exec_cmd from '../util/exec-cmd';
 import { Uri } from '../util/uri';
 
 export interface InstallArtifactInfo {
@@ -69,41 +70,35 @@ export async function installGit(session: Session, artifact: InstallArtifactInfo
   // url
   // commit id (if passed)
   // options of recursive espidf, full
-  await git(session, session.parseUri(install.location), artifact.targetLocation, options, install.commit, install.recurse, install.full).then(async () => {
+  await git(session, session.parseUri(install.location), artifact.targetLocation, options, options.events, install.subdirectory?.trim(), install.commit, install.recurse, install.full).then(async () => {
     if (install.espidf) {
-      // create the .espressif folder for the espressif installation
-      await artifact.targetLocation.createDirectory('.espressif');
-      // TODO: look into making sure idf_tools.py updates the system's python installation
-      // with the required modules.
-      const options: cp.ExecSyncOptionsWithBufferEncoding = {
-        env: {
-          ...process.env,
-          IDF_PATH: `${artifact.targetLocation.fsPath.toString()}/esp-idf`,
-          IDF_TOOLS_PATH: `${artifact.targetLocation.fsPath.toString()}/.espressif`
-        },
-        stdio: 'inherit'
-      };
-
-      const esp_idf = `${artifact.targetLocation.fsPath.toString()}/esp-idf`;
-
-      cp.execSync(
-        `python ${esp_idf}/tools/idf_tools.py install`,
-        options
-      );
-
-      cp.execSync(
-        `python ${esp_idf}/tools/idf_tools.py install-python-env`,
-        options
-      );
-
-      cp.execSync(
-        `python ${esp_idf}/tools/idf_tools.py export`,
-        options
-      );
-
-      log('espidf commands post-git are not implemented');
+      await installEspIdf(artifact);
     }
   });
+}
+
+async function installEspIdf(artifact: InstallArtifactInfo) {
+  // create the .espressif folder for the espressif installation
+  await artifact.targetLocation.createDirectory('.espressif');
+  // TODO: look into making sure idf_tools.py updates the system's python installation
+  // with the required modules.
+  const options: ProcessEnvOptions = {
+    env: {
+      ...process.env,
+      IDF_PATH: `${artifact.targetLocation.fsPath.toString()}/esp-idf`,
+      IDF_TOOLS_PATH: `${artifact.targetLocation.fsPath.toString()}/.espressif`
+    }
+  };
+
+  const esp_idf = `${artifact.targetLocation.fsPath.toString()}/esp-idf`;
+
+  const command = ['python.exe', `${esp_idf}/tools/idf_tools.py`, 'install'];
+  command.push('&& python.exe', `${esp_idf}/tools/idf_tools.py`, 'install-python-env');
+  command.push('&& python.exe', `${esp_idf}/tools/idf_tools.py`, 'export');
+
+  await exec_cmd.execute_shell(command.toString().replaceAll(',', ' '), undefined, options);
+
+  log('espidf commands post-git are not implemented');
 }
 
 async function acquireInstallArtifactFile(session: Session, targetFile: string, locations: Array<string>, options: AcquireOptions, install: Verifiable) {

@@ -35,6 +35,11 @@ export interface GitInstaller extends Installer {
   recurse?: boolean;
 
   /**
+   * Gives a subdirectory to clone the repo to, if given.
+   */
+  subdirectory?: string;
+
+  /**
    * determines if the thing being installed is esp-idf, and if so, it should do some other installations after
    * the git install.
    */

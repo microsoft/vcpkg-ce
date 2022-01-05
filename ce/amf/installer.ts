@@ -177,6 +177,14 @@ class GitCloneNode extends Installer implements GitInstaller {
     this.flags.set('recurse', value);
   }
 
+  get subdirectory() {
+    return Coerce.String(this.getMember('subdirectory'));
+  }
+
+  set subdirectory(value: string | undefined) {
+    this.setMember('subdirectory', value);
+  }
+
   get espidf() {
     return this.flags.has('espidf');
   }
