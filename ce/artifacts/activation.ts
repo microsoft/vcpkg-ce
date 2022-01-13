@@ -7,7 +7,9 @@ import { linq } from '../util/linq';
 import { Uri } from '../util/uri';
 
 export class Activation {
-  constructor(protected session: Session) {
+  #session: Session;
+  constructor(session: Session) {
+    this.#session = session;
   }
 
   /** a collection of #define declarations that would assumably be applied to all compiler calls. */
@@ -63,7 +65,7 @@ export class Activation {
 
   /** produces an environment block that can be passed to child processes to leverage dependent artifacts during installtion/activation. */
   get environmentBlock(): NodeJS.ProcessEnv {
-    const result = this.session.environment;
+    const result = this.#session.environment;
 
     // add environment variables
     for (const [k, v] of this.Variables) {
