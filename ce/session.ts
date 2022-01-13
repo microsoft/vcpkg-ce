@@ -6,7 +6,7 @@ import { delimiter } from 'path';
 import { MetadataFile } from './amf/metadata-file';
 import { Activation } from './artifacts/activation';
 import { Artifact, InstalledArtifact } from './artifacts/artifact';
-import { InstallArtifactInfo, installNuGet, installUnTar, installUnZip } from './artifacts/installer-impl';
+import { InstallArtifactInfo, installGit, installNuGet, installUnTar, installUnZip } from './artifacts/installer-impl';
 import { Registry } from './artifacts/registry';
 import { undo } from './constants';
 import { AcquireEvents } from './fs/acquire';
@@ -88,7 +88,8 @@ export class Session {
   private installers = new Map<string, InstallerTool>([
     ['nuget', installNuGet],
     ['unzip', installUnZip],
-    ['untar', installUnTar]
+    ['untar', installUnTar],
+    ['git', installGit]
   ]);
 
   readonly defaultRegistry: AggregateRegistry;

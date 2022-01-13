@@ -1,21 +1,11 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { Strings } from '../../collections';
 import { Installer } from './Installer';
 
-/**
- * a file that can be untar/unzip/unrar/etc
- *
- * combined with Verifiable, the hash should be matched before proceeding
- */
-
-export interface GitInstaller extends Installer {
-  /** the git repo location to be cloned */
-  location: Strings;
-
-  /** optionally, a tag/branch to be checked out */
-  tag?: string;
+export interface CloneSettings {
+  /** optionally, a tag/branch to be checkout out */
+  commit?: string;
 
   /**
    * determines if the whole repo is cloned.
@@ -34,4 +24,23 @@ export interface GitInstaller extends Installer {
    *  - when true, indicates that the repo should be cloned recursively.
    */
   recurse?: boolean;
+
+  /**
+   * Gives a subdirectory to clone the repo to, if given.
+   */
+  subdirectory?: string;
+}
+
+/**
+ * Installer that clones a git repository
+ */
+export interface GitInstaller extends Installer, CloneSettings {
+  /** the git repo location to be cloned */
+  location: string;
+
+  /**
+   * determines if the thing being installed is esp-idf, and if so, it should do some other installations after
+   * the git install.
+   */
+  espidf?: boolean;
 }

@@ -1,8 +1,10 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
-import { acquireArtifactFile, AcquireEvents, AcquireOptions, nuget } from '../fs/acquire';
+import { acquireArtifactFile, AcquireEvents, AcquireOptions, git, nuget } from '../fs/acquire';
 import { OutputOptions, TarBzUnpacker, TarGzUnpacker, TarUnpacker, Unpacker, UnpackEvents, ZipUnpacker } from '../fs/archive';
+import { CloneEvents } from '../fs/clone';
+import { GitInstaller } from '../interfaces/metadata/installers/git';
 import { Installer } from '../interfaces/metadata/installers/Installer';
 import { NupkgInstaller } from '../interfaces/metadata/installers/nupkg';
 import { UnTarInstaller } from '../interfaces/metadata/installers/tar';
@@ -93,4 +95,18 @@ export async function installUnZip(session: Session, artifact: InstallArtifactIn
     file,
     artifact.targetLocation,
     applyUnpackOptions(options, install));
+}
+
+export async function installGit(session: Session, artifact: InstallArtifactInfo, install: GitInstaller, options: { events?: Partial<CloneEvents & AcquireEvents> }): Promise<void> {
+  // at this point, we have all we need to pass to some kind of git api
+  // url
+  // commit id (if passed)
+  // options of recursive espidf, full
+  options.events?.progress?.(0);
+  await git(
+    session,
+    session.parseUri(install.location),
+    artifact.targetLocation,
+    { events: options.events, commit: install.commit, recurse: install.recurse, full: install.full, subdirectory: install.subdirectory });
+  options.events?.progress?.(100);
 }

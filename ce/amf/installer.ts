@@ -2,12 +2,14 @@
 // Licensed under the MIT License.
 
 import { isMap, isSeq } from 'yaml';
+import { GitInstaller } from '../interfaces/metadata/installers/git';
 import { Installer as IInstaller } from '../interfaces/metadata/installers/Installer';
 import { NupkgInstaller } from '../interfaces/metadata/installers/nupkg';
 import { UnTarInstaller } from '../interfaces/metadata/installers/tar';
 import { UnZipInstaller } from '../interfaces/metadata/installers/zip';
 import { Entity } from '../yaml/Entity';
 import { EntitySequence } from '../yaml/EntitySequence';
+import { Flags } from '../yaml/Flags';
 import { Strings } from '../yaml/strings';
 import { Node, Yaml, YAMLDictionary } from '../yaml/yaml-types';
 
@@ -137,6 +139,56 @@ class NupkgNode extends Installer implements NupkgInstaller {
   readonly transform = new Strings(undefined, this, 'transform');
 
 }
-class GitCloneNode extends Installer {
+class GitCloneNode extends Installer implements GitInstaller {
   override get installerKind() { return 'git'; }
+
+  get location() {
+    return this.asString(this.getMember('git'))!;
+  }
+
+  set location(value: string) {
+    this.setMember('git', value);
+  }
+
+  get commit() {
+    return this.asString(this.getMember('commit'));
+  }
+
+  set commit(value: string | undefined) {
+    this.setMember('commit', value);
+  }
+
+  private flags = new Flags(undefined, this, 'options');
+
+  get full() {
+    return this.flags.has('full');
+  }
+
+  set full(value: boolean) {
+    this.flags.set('full', value);
+  }
+
+  get recurse() {
+    return this.flags.has('recurse');
+  }
+
+  set recurse(value: boolean) {
+    this.flags.set('recurse', value);
+  }
+
+  get subdirectory() {
+    return this.asString(this.getMember('subdirectory'));
+  }
+
+  set subdirectory(value: string | undefined) {
+    this.setMember('subdirectory', value);
+  }
+
+  get espidf() {
+    return this.flags.has('espidf');
+  }
+
+  set espidf(value: boolean) {
+    this.flags.set('espidf', value);
+  }
 }
