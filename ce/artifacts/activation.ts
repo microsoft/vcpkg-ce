@@ -2,17 +2,35 @@
 // Licensed under the MIT License.
 
 import { delimiter } from 'path';
+import { Session } from '../session';
 import { linq } from '../util/linq';
 import { Uri } from '../util/uri';
 
 export class Activation {
+  constructor(protected session: Session) {
+  }
+
+  /** a collection of #define declarations that would assumably be applied to all compiler calls. */
   defines = new Map<string, string>();
-  tools = new Map<string, Uri>();
+
+  /** a collection of tool definitions from artifacts (think shell 'aliases')  */
+  tools = new Map<string, string>();
+
+  /** a collection of 'published locations' from artifacts. useful for msbuild */
+  locations = new Map<string, Uri>();
+
+  /** a collection of arbitrary properties from artifacts. useful for msbuild */
+  properties = new Map<string, Array<string>>();
+
+  /** a collection of environment variables from artifacts that are intended to be combinined into variables that have PATH delimiters */
   paths = new Map<string, Array<Uri>>();
+
+  /** environment variables from artifacts */
   environment = new Map<string, Array<string>>();
 
-  get Paths(): Array<[string, string]> {
-    return [...linq.entries(this.paths).select(([variable, values]) => <[string, string]>[variable, values.map(uri => uri.fsPath).join(delimiter)])];
+  get Paths() {
+    // return just paths that have contents.
+    return [... this.paths.entries()].filter(([k, v]) => v.length > 0);
   }
 
   get Variables() {
@@ -26,12 +44,53 @@ export class Activation {
 
     // add tools to the list
     for (const [key, value] of this.tools) {
-      result.push([key, value.fsPath]);
+      result.push([key, value]);
     }
     return result;
   }
 
   get Defines(): Array<[string, string]> {
     return linq.entries(this.defines).toArray();
+  }
+
+  get Locations(): Array<[string, string]> {
+    return linq.entries(this.locations).select(([k, v]) => <[string, string]>[k, v.fsPath]).where(([k, v]) => v.length > 0).toArray();
+  }
+
+  get Properties(): Array<[string, Array<string>]> {
+    return linq.entries(this.properties).toArray();
+  }
+
+  /** produces an environment block that can be passed to child processes to leverage dependent artifacts during installtion/activation. */
+  get environmentBlock(): NodeJS.ProcessEnv {
+    const result = this.session.environment;
+
+    // add environment variables
+    for (const [k, v] of this.Variables) {
+      result[k] = v;
+    }
+
+    // update environment paths
+    for (const [variable, values] of this.Paths) {
+      if (values.length) {
+        const s = new Set(values.map(each => each.fsPath));
+        const originalVariable = result[variable] || '';
+        if (originalVariable) {
+          for (const p of originalVariable.split(delimiter)) {
+            if (p) {
+              s.add(p);
+            }
+          }
+        }
+        result[variable] = originalVariable;
+      }
+    }
+
+    // define tool environment variables
+    for (const [key, value] of this.tools) {
+      result[key] = value;
+    }
+
+    return result;
   }
 }

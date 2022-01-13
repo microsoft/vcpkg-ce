@@ -4,6 +4,7 @@
 // Licensed under the MIT License.
 
 import { green, white } from 'chalk';
+import { spawn } from 'child_process';
 import { argv } from 'process';
 import { CommandLine } from './cli/command-line';
 import { AcquireCommand } from './cli/commands/acquire';
@@ -55,6 +56,12 @@ require('./exports');
 trackEvent; // ensure it's loaded asap.
 
 async function main() {
+
+  // ensure we can execute commands from this process.
+  // this works around an odd bug in the way that node handles
+  // executing child processes where the target is a windows store symlink
+  spawn(process.argv0, ['--version']);
+
   // create our session for this process.
   session = new Session(process.cwd(), commandline.context, <any>commandline, process.env);
 

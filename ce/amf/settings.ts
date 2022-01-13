@@ -10,6 +10,8 @@ import { StringsMap } from '../yaml/strings';
 
 export class Settings extends BaseMap implements ISettings {
   paths: StringsMap = new StringsMap(undefined, this, 'paths');
+  locations: ScalarMap<string> = new ScalarMap<string>(undefined, this, 'locations');
+  properties: StringsMap = new StringsMap(undefined, this, 'properties');
   variables: StringsMap = new StringsMap(undefined, this, 'variables');
   tools: ScalarMap<string> = new ScalarMap<string>(undefined, this, 'tools');
   defines: ScalarMap<string> = new ScalarMap<string>(undefined, this, 'defines');
@@ -17,5 +19,6 @@ export class Settings extends BaseMap implements ISettings {
   /** @internal */
   override *validate(): Iterable<ValidationError> {
     // todo: what validations do we need?
+
   }
 }

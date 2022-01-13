@@ -4,7 +4,7 @@
 import { i } from '../../i18n';
 import { session } from '../../main';
 import { Registries } from '../../registries/registries';
-import { activateArtifacts as getArtifactActivation, installArtifacts, selectArtifacts, showArtifacts } from '../artifacts';
+import { installArtifacts, selectArtifacts, showArtifacts } from '../artifacts';
 import { Command } from '../command';
 import { cmdSwitch } from '../format';
 import { error, log, warning } from '../styling';
@@ -61,10 +61,10 @@ export class UseCommand extends Command {
       return false;
     }
 
-    const [success, artifactStatus] = await installArtifacts(artifacts.artifacts, { force: this.commandLine.force, language: this.commandLine.language, allLanguages: this.commandLine.allLanguages });
+    const [success, artifactStatus, activation] = await installArtifacts(session, artifacts.artifacts, { force: this.commandLine.force, language: this.commandLine.language, allLanguages: this.commandLine.allLanguages });
     if (success) {
       log(i`Activating individual artifacts`);
-      await session.setActivationInPostscript(await getArtifactActivation(artifacts.artifacts), false);
+      await session.setActivationInPostscript(activation, false);
     } else {
       return false;
     }

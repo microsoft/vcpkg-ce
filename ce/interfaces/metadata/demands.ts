@@ -2,8 +2,10 @@
 // Licensed under the MIT License.
 
 
+import { Session } from '../../session';
 import { Dictionary, Sequence } from '../collections';
 import { Validation } from '../validation';
+import { AlternativeFulfillment } from './alternative-fulfillment';
 import { Installer } from './installers/Installer';
 import { Settings } from './Settings';
 import { VersionReference } from './version-reference';
@@ -44,4 +46,10 @@ export interface Demands extends Validation {
    *       package.
    */
   install: Sequence<Installer>;
+
+  /** a means to an alternative fulfillment */
+  unless: AlternativeFulfillment;
+
+  init(session: Session): Promise<Demands>;
 }
+

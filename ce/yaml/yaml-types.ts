@@ -20,6 +20,94 @@ export /** @internal */ abstract class Yaml<ThisType extends Node = Node> {
     }
   }
 
+  /** returns the current node as a JSON string */
+  toString(): string {
+    return this.node?.toJSON() ?? '';
+  }
+
+  /**
+   * Coersion function to string
+   *
+   * This will pass the coercion up to the parent if it exists
+   * (or otherwise overridden in the subclass)
+   *
+   * Which allows for value overriding
+   */
+  protected asString(value: any): string | undefined {
+    if (this.parent) {
+      return this.parent.asString(value);
+    }
+
+    if (isScalar(value)) {
+      value = value.value;
+    }
+    return typeof value === 'string' ? value : undefined;
+  }
+
+  /**
+   * Coersion function to number
+   *
+   * This will pass the coercion up to the parent if it exists
+   * (or otherwise overridden in the subclass)
+   *
+   * Which allows for value overriding
+   */
+  asNumber(value: any): number | undefined {
+    if (this.parent) {
+      return this.parent.asNumber(value);
+    }
+
+    if (isScalar(value)) {
+      value = value.value;
+    }
+    return typeof value === 'number' ? value : undefined;
+  }
+
+  /**
+   * Coersion function to boolean
+   *
+   * This will pass the coercion up to the parent if it exists
+   * (or otherwise overridden in the subclass)
+   *
+   * Which allows for value overriding
+   */
+  asBoolean(value: any): boolean | undefined {
+    if (this.parent) {
+      return this.parent.asBoolean(value);
+    }
+
+    if (isScalar(value)) {
+      value = value.value;
+    }
+    return typeof value === 'boolean' ? value : undefined;
+  }
+
+  /**
+   * Coersion function to any primitive
+   *
+   * This will pass the coercion up to the parent if it exists
+   * (or otherwise overridden in the subclass)
+   *
+   * Which allows for value overriding
+   */
+  asPrimitive(value: any): Primitive | undefined {
+    if (this.parent) {
+      return this.parent.asPrimitive(value);
+    }
+
+    if (isScalar(value)) {
+      value = value.value;
+    }
+    switch (typeof value) {
+      case 'boolean':
+      case 'number':
+      case 'string':
+        return value;
+    }
+    return undefined;
+  }
+
+
   get root(): Yaml {
     return this.parent ? this.parent.root : this;
   }

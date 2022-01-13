@@ -9,5 +9,6 @@ export enum ErrorKind {
   DuplicateKey = 'DuplicateKey',
   NoInstallInDemand = 'NoInstallInDemand',
   HostOnly = 'HostOnly',
-  MissingHash = 'MissingHashValue'
+  MissingHash = 'MissingHashValue',
+  InvalidDefinition = 'InvalidDefinition',
 }

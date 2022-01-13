@@ -136,7 +136,7 @@ export abstract class ArtifactRegistry implements Registry {
       this.installationFolder.join(metadata.info.id.replace(/[^\w]+/g, '.'), metadata.info.version),
       parent.getRegistryName(this),
       this.location
-    );
+    ).init(this.session);
   }
 
   private async openArtifacts(manifestPaths: Array<string>, parent: Registries) {

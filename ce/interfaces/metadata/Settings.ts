@@ -19,6 +19,13 @@ export interface Settings extends Validation {
    * arrays mean that the values should be joined with spaces
    */
   variables: Dictionary<Strings>;
+
+  /** a map of properties that are activation-type specific (ie, msbuild) */
+  properties: Dictionary<Strings>;
+
+  /** a map of locations that are activation-type specific (ie, msbuild) */
+  locations: Dictionary<string>;
+
   // this is where we'd see things like
   // CFLAGS: [...] where you can have a bunch of things that would end up in the CFLAGS variable (or used to set values in a vcxproj/cmake settings file.)
   //

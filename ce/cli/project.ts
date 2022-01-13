@@ -6,7 +6,7 @@ import { i } from '../i18n';
 import { trackActivation } from '../insights';
 import { session } from '../main';
 import { Uri } from '../util/uri';
-import { activateArtifacts, installArtifacts, showArtifacts } from './artifacts';
+import { installArtifacts, showArtifacts } from './artifacts';
 import { blank } from './constants';
 import { projectFile } from './format';
 import { error, log } from './styling';
@@ -18,11 +18,10 @@ export async function openProject(location: Uri): Promise<ProjectManifest> {
 
 export async function activate(artifacts: ArtifactMap, options?: { force?: boolean, allLanguages?: boolean, language?: string }) {
   // install the items in the project
-  const [success] = await installArtifacts(artifacts.artifacts, options);
+  const [success, , activation] = await installArtifacts(session, artifacts.artifacts, options);
 
   if (success) {
     // activate all the tools in the project
-    const activation = await activateArtifacts(artifacts.artifacts);
     await session.setActivationInPostscript(activation);
   }
 

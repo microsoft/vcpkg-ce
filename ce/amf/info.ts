@@ -5,22 +5,21 @@ import { i } from '../i18n';
 import { ErrorKind } from '../interfaces/error-kind';
 import { Info as IInfo } from '../interfaces/metadata/info';
 import { ValidationError } from '../interfaces/validation-error';
-import { Coerce } from '../yaml/Coerce';
 import { Entity } from '../yaml/Entity';
 import { Flags } from '../yaml/Flags';
 
 
 export class Info extends Entity implements IInfo {
-  get version(): string { return Coerce.String(this.getMember('version')) || ''; }
+  get version(): string { return this.asString(this.getMember('version')) || ''; }
   set version(value: string) { this.setMember('version', value); }
 
-  get id(): string { return Coerce.String(this.getMember('id')) || ''; }
+  get id(): string { return this.asString(this.getMember('id')) || ''; }
   set id(value: string) { this.setMember('id', value); }
 
-  get summary(): string | undefined { return Coerce.String(this.getMember('summary')); }
+  get summary(): string | undefined { return this.asString(this.getMember('summary')); }
   set summary(value: string | undefined) { this.setMember('summary', value); }
 
-  get description(): string | undefined { return Coerce.String(this.getMember('description')); }
+  get description(): string | undefined { return this.asString(this.getMember('description')); }
   set description(value: string | undefined) { this.setMember('description', value); }
 
   private flags = new Flags(undefined, this, 'options');

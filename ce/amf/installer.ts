@@ -6,7 +6,6 @@ import { Installer as IInstaller } from '../interfaces/metadata/installers/Insta
 import { NupkgInstaller } from '../interfaces/metadata/installers/nupkg';
 import { UnTarInstaller } from '../interfaces/metadata/installers/tar';
 import { UnZipInstaller } from '../interfaces/metadata/installers/zip';
-import { Coerce } from '../yaml/Coerce';
 import { Entity } from '../yaml/Entity';
 import { EntitySequence } from '../yaml/EntitySequence';
 import { Strings } from '../yaml/strings';
@@ -54,17 +53,17 @@ export class Installer extends Entity implements IInstaller {
   }
 
   get lang() {
-    return Coerce.String(this.getMember('lang'));
+    return this.asString(this.getMember('lang'));
   }
 
   get nametag() {
-    return Coerce.String(this.getMember('nametag'));
+    return this.asString(this.getMember('nametag'));
   }
 }
 
 abstract class FileInstallerNode extends Installer {
   get sha256() {
-    return Coerce.String(this.getMember('sha256'));
+    return this.asString(this.getMember('sha256'));
   }
 
   set sha256(value: string | undefined) {
@@ -72,7 +71,7 @@ abstract class FileInstallerNode extends Installer {
   }
 
   get sha512() {
-    return Coerce.String(this.getMember('sha512'));
+    return this.asString(this.getMember('sha512'));
   }
 
   set sha512(value: string | undefined) {
@@ -80,7 +79,7 @@ abstract class FileInstallerNode extends Installer {
   }
 
   get strip() {
-    return Coerce.Number(this.getMember('strip'));
+    return this.asNumber(this.getMember('strip'));
   }
 
   set strip(value: number | undefined) {
@@ -102,7 +101,7 @@ class UnTarNode extends FileInstallerNode implements UnTarInstaller {
 }
 class NupkgNode extends Installer implements NupkgInstaller {
   get location() {
-    return Coerce.String(this.getMember('nupkg'))!;
+    return this.asString(this.getMember('nupkg'))!;
   }
 
   set location(value: string) {
@@ -112,7 +111,7 @@ class NupkgNode extends Installer implements NupkgInstaller {
   override get installerKind() { return 'nupkg'; }
 
   get strip() {
-    return Coerce.Number(this.getMember('strip'));
+    return this.asNumber(this.getMember('strip'));
   }
 
   set strip(value: number | undefined) {
@@ -120,7 +119,7 @@ class NupkgNode extends Installer implements NupkgInstaller {
   }
 
   get sha256() {
-    return Coerce.String(this.getMember('sha256'));
+    return this.asString(this.getMember('sha256'));
   }
 
   set sha256(value: string | undefined) {
@@ -128,7 +127,7 @@ class NupkgNode extends Installer implements NupkgInstaller {
   }
 
   get sha512() {
-    return Coerce.String(this.getMember('sha512'));
+    return this.asString(this.getMember('sha512'));
   }
 
   set sha512(value: string | undefined) {

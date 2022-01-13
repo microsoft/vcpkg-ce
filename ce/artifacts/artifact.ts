@@ -2,21 +2,16 @@
 // Licensed under the MIT License.
 
 import { fail } from 'assert';
-import * as micromatch from 'micromatch';
+import { resolve } from 'path';
 import { MetadataFile } from '../amf/metadata-file';
 import { AcquireEvents } from '../fs/acquire';
 import { UnpackEvents } from '../fs/archive';
 import { i } from '../i18n';
-import { Installer } from '../interfaces/metadata/installers/Installer';
-import { NupkgInstaller } from '../interfaces/metadata/installers/nupkg';
-import { UnTarInstaller } from '../interfaces/metadata/installers/tar';
-import { UnZipInstaller } from '../interfaces/metadata/installers/zip';
 import { Registries } from '../registries/registries';
 import { Session } from '../session';
 import { linq } from '../util/linq';
 import { Uri } from '../util/uri';
 import { Activation } from './activation';
-import { installNuGet, installUnTar, installUnZip } from './installer-impl';
 import { SetOfDemands } from './SetOfDemands';
 
 export type Selections = Map<string, string>;
@@ -46,6 +41,12 @@ class ArtifactBase {
         this.registries.add(reg, name);
       }
     }
+  }
+
+  /** Async Initializer */
+  async init(session: Session) {
+    await this.applicableDemands.init(session);
+    return this;
   }
 
   async resolveDependencies(artifacts = new ArtifactMap(), recurse = true) {
@@ -100,32 +101,7 @@ export class Artifact extends ArtifactBase {
     return `${this.registryUri.toString()}::${this.id}::${this.version}`;
   }
 
-  private async installSingle(installInfo: Installer, options: { events?: Partial<UnpackEvents & AcquireEvents>, allLanguages?: boolean, language?: string }): Promise<void> {
-    if (installInfo.lang && !options.allLanguages && options.language && options.language.toLowerCase() !== installInfo.lang.toLowerCase()) {
-      return;
-    }
-    const target = { name: this.id, targetLocation: this.targetLocation };
-    switch (installInfo.installerKind) {
-      case 'nupkg':
-        await installNuGet(this.session, target, <NupkgInstaller>installInfo, options);
-        break;
-      case 'unzip':
-        await installUnZip(this.session, target, <UnZipInstaller>installInfo, options);
-        break;
-      case 'untar':
-        await installUnTar(this.session, target, <UnTarInstaller>installInfo, options);
-        break;
-      case 'git':
-        throw new Error('not implemented');
-      default:
-        fail(i`Unknown installer type ${installInfo!.installerKind}`);
-    }
-  }
-
-  async install(options?: { events?: Partial<UnpackEvents & AcquireEvents>, force?: boolean, allLanguages?: boolean, language?: string }): Promise<boolean> {
-    if (!options) {
-      options = {};
-    }
+  async install(options: { events?: Partial<UnpackEvents & AcquireEvents>, force?: boolean, allLanguages?: boolean, language?: string, activation: Activation }): Promise<boolean> {
 
     // is it installed?
     if (await this.isInstalled && !options.force) {
@@ -139,35 +115,42 @@ export class Artifact extends ArtifactBase {
         // if a file is locked, it may not get removed. We'll deal with this later.
       }
     }
+    const applicableDemands = this.applicableDemands;
 
-    const d = this.applicableDemands;
-    {
-      let fail = false;
-      for (const each of d.errors) {
-        this.session.channels.error(each);
-        fail = true;
-      }
+    let isFailing = false;
+    for (const error of applicableDemands.errors) {
+      this.session.channels.error(error);
+      isFailing = true;
+    }
 
-      // check to see that we only have one install block
-
-      if (fail) {
-        throw Error('errors present');
-      }
+    if (isFailing) {
+      throw Error('errors present');
     }
 
     // warnings
-    for (const each of d.warnings) {
-      this.session.channels.warning(each);
+    for (const warning of applicableDemands.warnings) {
+      this.session.channels.warning(warning);
     }
 
     // messages
-    for (const each of d.messages) {
-      this.session.channels.message(each);
+    for (const message of applicableDemands.messages) {
+      this.session.channels.message(message);
     }
 
     // ok, let's install this.
-    for (const singleInstallInfo of d.installer) {
-      await this.installSingle(singleInstallInfo, options);
+    for (const installInfo of applicableDemands.installer) {
+      if (installInfo.lang && !options.allLanguages && options.language && options.language.toLowerCase() !== installInfo.lang.toLowerCase()) {
+        continue;
+      }
+
+      const target = { name: this.id, targetLocation: this.targetLocation };
+      const installer = this.session.artifactInstaller(installInfo);
+      if (!installer) {
+        fail(i`Unknown installer type ${installInfo!.installerKind}`);
+      }
+
+      await installer(this.session, target, installInfo, options);
+
     }
 
     // after we unpack it, write out the installed manifest
@@ -189,6 +172,7 @@ export class Artifact extends ArtifactBase {
     await this.targetLocation.delete({ recursive: true, useTrash: false });
   }
 
+
   async loadActivationSettings(activation: Activation) {
     // construct paths (bin, lib, include, etc.)
     // construct tools
@@ -198,9 +182,10 @@ export class Artifact extends ArtifactBase {
     const l = this.targetLocation.toString().length + 1;
     const allPaths = (await this.targetLocation.readDirectory(undefined, { recursive: true })).select(([name, stat]) => name.toString().substr(l));
 
-    for (const s of this.applicableDemands.settings) {
+    for (const settingBlock of this.applicableDemands.settings) {
+      // **** defines ****
       // eslint-disable-next-line prefer-const
-      for (let [key, value] of s.defines) {
+      for (let [key, value] of settingBlock.defines) {
         if (value === 'true') {
           value = '1';
         }
@@ -213,45 +198,88 @@ export class Artifact extends ArtifactBase {
         activation.defines.set(key, value);
       }
 
-      for (const key of s.paths.keys) {
+      // **** paths ****
+      for (const key of settingBlock.paths.keys) {
         if (!key) {
           continue;
         }
+
         const pathEnvVariable = key.toUpperCase();
         const p = activation.paths.getOrDefault(pathEnvVariable, []);
-        const l = s.paths.get(key);
-        const locations = (l ? [...l] : []).map(each => each).selectMany(path => {
-          const p = sanitizePath(path);
-          return p ? micromatch(allPaths, p) : [''];
-        }).map(each => this.targetLocation.join(each));
+        const l = settingBlock.paths.get(key);
+        const uris = new Set<Uri>();
 
-        if (locations?.length) {
-          p.push(...locations);
-          this.session.channels.debug(`locations: ${locations.map(l => l.toString())}`);
+        for (const location of l ?? []) {
+          // check that each path is an actual path.
+          const path = await this.sanitizeAndValidatePath(location);
+          if (path && !uris.has(path)) {
+            uris.add(path);
+            p.push(path);
+          }
         }
       }
 
-      for (const key of s.tools.keys) {
+      // **** tools ****
+      for (const key of settingBlock.tools.keys) {
         const envVariable = key.toUpperCase();
+
         if (activation.tools.has(envVariable)) {
           this.session.channels.error(i`Duplicate tool declared ${key} during activation. Probably not a good thing?`);
         }
 
-        const location = sanitizePath(s.tools.get(key) || '');
-        const uri = this.targetLocation.join(location);
-
-        if (! await uri.exists()) {
-          this.session.channels.error(i`Tool '${key}' is specified as '${location}' which does not exist in the package`);
+        const p = settingBlock.tools.get(key) || '';
+        const uri = await this.sanitizeAndValidatePath(p);
+        if (uri) {
+          activation.tools.set(envVariable, uri.fsPath);
+        } else {
+          if (p) {
+            activation.tools.set(envVariable, p);
+            // this.session.channels.warning(i`Invalid tool path '${p}'`);
+          }
         }
-
-        activation.tools.set(envVariable, uri);
       }
 
-      for (const [key, value] of s.variables) {
+      // **** variables ****
+      for (const [key, value] of settingBlock.variables) {
         const envKey = activation.environment.getOrDefault(key, []);
         envKey.push(...value);
       }
+
+      // **** properties ****
+      for (const [key, value] of settingBlock.properties) {
+        const envKey = activation.properties.getOrDefault(key, []);
+        envKey.push(...value);
+      }
+
+      // **** locations ****
+      for (const locationName of settingBlock.locations.keys) {
+        if (activation.locations.has(locationName)) {
+          this.session.channels.error(i`Duplicate location declared ${locationName} during activation. Probably not a good thing?`);
+        }
+
+        const p = settingBlock.locations.get(locationName) || '';
+        const uri = await this.sanitizeAndValidatePath(p);
+        if (uri) {
+          activation.locations.set(locationName, uri);
+        }
+      }
     }
+  }
+
+  async sanitizeAndValidatePath(path: string) {
+    try {
+      const loc = this.session.fileSystem.file(resolve(path));
+      if (await loc.exists()) {
+        return loc;
+      }
+    } catch {
+      // no worries, treat it like a relative path.
+    }
+    const loc = this.targetLocation.join(sanitizePath(path));
+    if (await loc.exists()) {
+      return loc;
+    }
+    return undefined;
   }
 }
 

@@ -6,14 +6,18 @@ import { delimiter } from 'path';
 import { MetadataFile } from './amf/metadata-file';
 import { Activation } from './artifacts/activation';
 import { Artifact, InstalledArtifact } from './artifacts/artifact';
+import { InstallArtifactInfo, installNuGet, installUnTar, installUnZip } from './artifacts/installer-impl';
 import { Registry } from './artifacts/registry';
 import { undo } from './constants';
+import { AcquireEvents } from './fs/acquire';
+import { UnpackEvents } from './fs/archive';
 import { FileSystem, FileType } from './fs/filesystem';
 import { HttpsFileSystem } from './fs/http-filesystem';
 import { LocalFileSystem } from './fs/local-filesystem';
 import { schemeOf, UnifiedFileSystem } from './fs/unified-filesystem';
 import { VsixLocalFilesystem } from './fs/vsix-local-filesystem';
 import { i } from './i18n';
+import { Installer } from './interfaces/metadata/installers/Installer';
 import { AggregateRegistry } from './registries/aggregate-registry';
 import { LocalRegistry } from './registries/LocalRegistry';
 import { Registries } from './registries/registries';
@@ -24,6 +28,8 @@ import { Dictionary, entries } from './util/linq';
 import { Queue } from './util/promise';
 import { isFilePath, Uri } from './util/uri';
 import { isYAML } from './yaml/yaml';
+
+type InstallerTool<T extends Installer = any> = (session: Session, artifact: InstallArtifactInfo, install: T, options: { activation: Activation, events?: Partial<UnpackEvents & AcquireEvents> }) => Promise<void>
 
 const defaultConfig =
   `{
@@ -77,6 +83,13 @@ export class Session {
   readonly cache: Uri;
   currentDirectory: Uri;
   configuration!: MetadataFile;
+
+  /** register installer functions here */
+  private installers = new Map<string, InstallerTool>([
+    ['nuget', installNuGet],
+    ['unzip', installUnZip],
+    ['untar', installUnTar]
+  ]);
 
   readonly defaultRegistry: AggregateRegistry;
   private readonly registries = new Registries(this);
@@ -376,8 +389,23 @@ export class Session {
     // capture any variables that we set.
     const contents = <BackupFile>{ environment: {}, activation };
 
-    for (const [variable, value] of activation.Paths) {
-      this.addPostscript(variable, `${value}${delimiter}${process.env[variable]}`);
+    // build PATH style variable for the environment
+    for (const [variable, values] of activation.Paths) {
+
+      if (values.length) {
+        // add the new values first; existing values are added after.
+        const s = new Set(values.map(each => each.fsPath));
+        const originalVariable = this.environment[variable] || '';
+        if (originalVariable) {
+          for (const p of originalVariable.split(delimiter)) {
+            if (p) {
+              s.add(p);
+            }
+          }
+        }
+        contents.environment[variable] = originalVariable;
+        this.addPostscript(variable, [...s.values()].join(delimiter));
+      }
       // for path activations, we undo specific entries, so we don't store the variable here (in case the path is modified after)
     }
 
@@ -448,13 +476,18 @@ export class Session {
         result.push({
           folder,
           id: metadata.info.id,
-          artifact: new InstalledArtifact(this, metadata)
+          artifact: await new InstalledArtifact(this, metadata).init(this)
         });
       } catch {
         // not a valid install.
       }
     }
     return result;
+  }
+
+  /** returns an installer function (or undefined) for a given installerkind */
+  artifactInstaller(installInfo: Installer) {
+    return this.installers.get(installInfo.installerKind);
   }
 
   async openManifest(manifestFile: Uri): Promise<MetadataFile> {

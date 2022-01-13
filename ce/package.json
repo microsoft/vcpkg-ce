@@ -69,6 +69,7 @@
     "marked-terminal": "4.1.0",
     "marked": "2.0.0",
     "cli-progress": "3.9.0",
-    "applicationinsights": "2.1.9"
+    "applicationinsights": "2.1.9",
+    "fast-glob": "3.2.7"
   }
 }
