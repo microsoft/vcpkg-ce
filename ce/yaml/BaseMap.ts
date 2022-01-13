@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 import { isMap, isScalar, isSeq } from 'yaml';
-import { Coerce } from './Coerce';
 import { Entity } from './Entity';
 import { ScalarSequence } from './ScalarSequence';
 import { EntityFactory, Node, Primitive, Yaml, YAMLSequence } from './yaml-types';
@@ -10,7 +9,7 @@ import { EntityFactory, Node, Primitive, Yaml, YAMLSequence } from './yaml-types
 
 export /** @internal */ abstract class BaseMap extends Entity {
   get keys(): Array<string> {
-    return this.exists() ? this.node.items.map(each => Coerce.String(each.key)!) : [];
+    return this.exists() ? this.node.items.map(each => this.asString(each.key)!) : [];
   }
 
   get length(): number {
@@ -41,7 +40,7 @@ export /** @internal */ abstract class BaseMap extends Entity {
     if (this.exists()) {
       const v = this.node.get(key, true);
       if (isScalar(v)) {
-        return Coerce.Primitive(v.value);
+        return this.asPrimitive(v.value);
       }
     }
     return undefined;

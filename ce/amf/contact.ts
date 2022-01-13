@@ -4,14 +4,13 @@
 import { Dictionary } from '../interfaces/collections';
 import { Contact as IContact } from '../interfaces/metadata/contact';
 import { ValidationError } from '../interfaces/validation-error';
-import { Coerce } from '../yaml/Coerce';
 import { Entity } from '../yaml/Entity';
 import { EntityMap } from '../yaml/EntityMap';
 import { Strings } from '../yaml/strings';
 import { Yaml, YAMLDictionary } from '../yaml/yaml-types';
 
 export class Contact extends Entity implements IContact {
-  get email(): string | undefined { return Coerce.String(this.getMember('email')); }
+  get email(): string | undefined { return this.asString(this.getMember('email')); }
   set email(value: string | undefined) { this.setMember('email', value); }
 
   readonly roles = new Strings(undefined, this, 'role');

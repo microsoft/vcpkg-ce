@@ -11,6 +11,7 @@ import { Verifiable } from '../interfaces/metadata/installers/verifiable';
 import { UnZipInstaller } from '../interfaces/metadata/installers/zip';
 import { Session } from '../session';
 import { Uri } from '../util/uri';
+import { Activation } from './activation';
 
 export interface InstallArtifactInfo {
   readonly name: string;
@@ -48,7 +49,7 @@ function applyUnpackOptions(options: OutputOptions, install: UnpackSettings): Ou
   return { ...options, strip: install.strip, transform: [...install.transform] };
 }
 
-export async function installNuGet(session: Session, artifact: InstallArtifactInfo, install: NupkgInstaller, options: { events?: Partial<UnpackEvents & AcquireEvents> }): Promise<void> {
+export async function installNuGet(session: Session, artifact: InstallArtifactInfo, install: NupkgInstaller, options: { activation: Activation, events?: Partial<UnpackEvents & AcquireEvents> }): Promise<void> {
   const targetFile = `${artifact.name}.zip`;
   const file = await nuget(
     session,
@@ -71,7 +72,7 @@ async function acquireInstallArtifactFile(session: Session, targetFile: string, 
   return file;
 }
 
-export async function installUnTar(session: Session, artifact: InstallArtifactInfo, install: UnTarInstaller, options: { events?: Partial<UnpackEvents & AcquireEvents> }): Promise<void> {
+export async function installUnTar(session: Session, artifact: InstallArtifactInfo, install: UnTarInstaller, options: { activation: Activation, events?: Partial<UnpackEvents & AcquireEvents> }): Promise<void> {
   const file = await acquireInstallArtifactFile(session, artifactFileName(artifact, install, '.tar'), [...install.location], options, install);
   const x = await file.readBlock(0, 128);
   let unpacker: Unpacker;
@@ -86,7 +87,7 @@ export async function installUnTar(session: Session, artifact: InstallArtifactIn
   return unpacker.unpack(file, artifact.targetLocation, applyUnpackOptions(options, install));
 }
 
-export async function installUnZip(session: Session, artifact: InstallArtifactInfo, install: UnZipInstaller, options: { events?: Partial<UnpackEvents & AcquireEvents> }): Promise<void> {
+export async function installUnZip(session: Session, artifact: InstallArtifactInfo, install: UnZipInstaller, options: { activation: Activation, events?: Partial<UnpackEvents & AcquireEvents> }): Promise<void> {
   const file = await acquireInstallArtifactFile(session, artifactFileName(artifact, install, '.zip'), [...install.location], options, install);
   await new ZipUnpacker(session).unpack(
     file,

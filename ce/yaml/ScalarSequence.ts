@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 import { isScalar, isSeq, Scalar, YAMLSeq } from 'yaml';
-import { Coerce } from './Coerce';
 import { Primitive, Yaml, YAMLScalar, YAMLSequence } from './yaml-types';
 
 /**
@@ -71,7 +70,7 @@ export /** @internal */ class ScalarSequence<TElement extends Primitive> extends
   delete(value: TElement) {
     if (isSeq(this.node)) {
       for (let i = 0; i < this.node.items.length; i++) {
-        if (value === Coerce.Primitive(this.node.items[i])) {
+        if (value === this.asPrimitive(this.node.items[i])) {
           this.node.items.splice(i, 1);
           return true;
         }
@@ -98,11 +97,11 @@ export /** @internal */ class ScalarSequence<TElement extends Primitive> extends
 
   *[Symbol.iterator](): Iterator<TElement> {
     if (isScalar(this.node)) {
-      return yield this.node.value;
+      return yield <any>this.asPrimitive(this.node.value);
     }
     if (isSeq(this.node)) {
       for (const each of this.node.items.values()) {
-        const v = Coerce.Primitive(each);
+        const v = this.asPrimitive(each);
         if (v) {
           yield <any>v;
         }

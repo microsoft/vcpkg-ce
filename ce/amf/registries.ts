@@ -8,7 +8,6 @@ import { RegistryDeclaration } from '../interfaces/metadata/metadata-format';
 import { Registry as IRegistry } from '../interfaces/metadata/registries/artifact-registry';
 import { ValidationError } from '../interfaces/validation-error';
 import { isFilePath, Uri } from '../util/uri';
-import { Coerce } from '../yaml/Coerce';
 import { Entity } from '../yaml/Entity';
 import { Strings } from '../yaml/strings';
 import { Node, Yaml, YAMLDictionary, YAMLSequence } from '../yaml/yaml-types';
@@ -26,7 +25,7 @@ export class Registries extends Yaml<YAMLDictionary | YAMLSequence> implements D
     if (isSeq(this.node)) {
       for (const item of this.node.items) {
         if (isMap(item)) {
-          const name = Coerce.String(item.get('name'));
+          const name = this.asString(item.get('name'));
           if (name) {
             const v = this.createRegistry(item);
             if (v) {
@@ -123,13 +122,13 @@ export class Registries extends Yaml<YAMLDictionary | YAMLSequence> implements D
   }
   get keys(): Array<string> {
     if (isMap(this.node)) {
-      return this.node.items.map(({ key }) => Coerce.String(key) || '');
+      return this.node.items.map(({ key }) => this.asString(key) || '');
     }
     if (isSeq(this.node)) {
       const result = new Array<string>();
       for (const item of this.node.items) {
         if (isMap(item)) {
-          const n = Coerce.String(item.get('name'));
+          const n = this.asString(item.get('name'));
           if (n) {
             result.push(n);
           }
@@ -142,8 +141,8 @@ export class Registries extends Yaml<YAMLDictionary | YAMLSequence> implements D
 
   protected createRegistry(node: Node) {
     if (isMap(node)) {
-      const k = Coerce.String(node.get('kind'));
-      const l = Coerce.String(node.get('location'));
+      const k = this.asString(node.get('kind'));
+      const l = this.asString(node.get('location'));
 
       // simplistic check to see if we're pointing to a file or a https:// url
       if (k === 'artifact' && l) {
@@ -171,7 +170,7 @@ export class Registries extends Yaml<YAMLDictionary | YAMLSequence> implements D
 
 export class Registry extends Entity implements IRegistry {
 
-  get registryKind(): string | undefined { return Coerce.String(this.getMember('kind')); }
+  get registryKind(): string | undefined { return this.asString(this.getMember('kind')); }
   set registryKind(value: string | undefined) { this.setMember('kind', value); }
 
   /** @internal */

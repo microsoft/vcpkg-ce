@@ -11,11 +11,10 @@ import { ValidationError } from '../interfaces/validation-error';
 import { Session } from '../session';
 import { Uri } from '../util/uri';
 import { BaseMap } from '../yaml/BaseMap';
-import { Coerce } from '../yaml/Coerce';
 import { toYAML } from '../yaml/yaml';
 import { Yaml, YAMLDictionary } from '../yaml/yaml-types';
 import { Contacts } from './contact';
-import { Demands } from './demands';
+import { Demands, Unless } from './demands';
 import { DocumentContext } from './document-context';
 import { GlobalSettings } from './global-settings';
 import { Info } from './info';
@@ -63,19 +62,20 @@ export class MetadataFile extends BaseMap implements Profile {
   registries = new Registries(undefined, this, 'registries');
   globalSettings = new GlobalSettings(undefined, this, 'global');
 
-  get error(): string | undefined { return Coerce.String(this.getMember('error')); }
+  get error(): string | undefined { return this.asString(this.getMember('error')); }
   set error(value: string | undefined) { this.setMember('error', value); }
 
-  get warning(): string | undefined { return Coerce.String(this.getMember('warning')); }
+  get warning(): string | undefined { return this.asString(this.getMember('warning')); }
   set warning(value: string | undefined) { this.setMember('warning', value); }
 
-  get message(): string | undefined { return Coerce.String(this.getMember('message')); }
+  get message(): string | undefined { return this.asString(this.getMember('message')); }
   set message(value: string | undefined) { this.setMember('message', value); }
 
   seeAlso = new Requires(undefined, this, 'seeAlso');
   requires = new Requires(undefined, this, 'requires');
   settings = new Settings(undefined, this, 'settings');
   install = new Installs(undefined, this, 'install');
+  unless = new Unless(undefined, this, 'unless');
 
   conditionalDemands = new Demands(undefined, this, 'demands');
 

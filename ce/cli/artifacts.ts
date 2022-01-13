@@ -7,6 +7,7 @@ import { Artifact, ArtifactMap } from '../artifacts/artifact';
 import { i } from '../i18n';
 import { trackAcquire } from '../insights';
 import { Registries } from '../registries/registries';
+import { Session } from '../session';
 import { artifactIdentity, artifactReference } from './format';
 import { Table } from './markdown-table';
 import { debug, error, log } from './styling';
@@ -50,9 +51,10 @@ export async function selectArtifacts(selections: Selections, registries: Regist
   return artifacts;
 }
 
-export async function installArtifacts(artifacts: Iterable<Artifact>, options?: { force?: boolean, allLanguages?: boolean, language?: string }): Promise<[boolean, Map<Artifact, boolean>]> {
+export async function installArtifacts(session: Session, artifacts: Iterable<Artifact>, options?: { force?: boolean, allLanguages?: boolean, language?: string }): Promise<[boolean, Map<Artifact, boolean>, Activation]> {
   // resolve the full set of artifacts to install.
   const installed = new Map<Artifact, boolean>();
+  const activation = new Activation(session);
 
   const bar = new MultiBar({
     clearOnComplete: true, hideCursor: true, format: '{name} {bar}\u25A0 {percentage}% {action} {current}',
@@ -70,6 +72,7 @@ export async function installArtifacts(artifacts: Iterable<Artifact>, options?: 
     try {
       const actuallyInstalled = await artifact.install({
         ...options,
+        activation,
         events: {
           verifying: (name, percent) => {
             if (percent >= 100) {
@@ -124,21 +127,25 @@ export async function installArtifacts(artifacts: Iterable<Artifact>, options?: 
       if (actuallyInstalled) {
         trackAcquire(artifact.id, artifact.version);
       }
+
+      // build the activation context on the fly...
+      await artifact.loadActivationSettings(activation);
+
     } catch (e: any) {
       bar.stop();
       debug(e);
       debug(e.stack);
       error(i`Error installing ${artifactIdentity(registryName, id)} - ${e} `);
-      return [false, installed];
+      return [false, installed, activation];
     }
 
     bar.stop();
   }
-  return [true, installed];
+  return [true, installed, activation];
 }
 
-export async function activateArtifacts(artifacts: Iterable<Artifact>) {
-  const activation = new Activation();
+export async function activateArtifacts(session: Session, artifacts: Iterable<Artifact>) {
+  const activation = new Activation(session);
   for (const artifact of artifacts) {
     if (await artifact.isInstalled) {
       await artifact.loadActivationSettings(activation);
