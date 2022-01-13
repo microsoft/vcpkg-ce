@@ -297,7 +297,6 @@ export async function git(session: Session, repo: Uri, targetLocation: Uri, opti
     let completion_percentage = 0;
     let last_progress_percent = 0;
     let current_progress_percent = 0;
-    options?.events?.progress?.(0);
 
     const regex = /\s([0-9]*?)%/;
     // command is passed through as one string, since there is a possibility of commands being chained together
@@ -313,13 +312,13 @@ export async function git(session: Session, repo: Uri, targetLocation: Uri, opti
           if (match_array !== null) {
             current_progress_percent = parseInt(match_array[1].toString());
             if (current_progress_percent === 100 || current_progress_percent < last_progress_percent) {
-              if (completion_percentage < 50) {
+              if (completion_percentage < 45) {
                 completion_percentage += 10;
               }
-              else if (completion_percentage < 75) {
+              else if (completion_percentage < 65) {
                 completion_percentage += 5;
               }
-              else if (completion_percentage < 95) {
+              else if (completion_percentage < 90) {
                 completion_percentage += 3;
               }
               options?.events?.progress?.(completion_percentage);
@@ -327,9 +326,6 @@ export async function git(session: Session, repo: Uri, targetLocation: Uri, opti
             last_progress_percent = current_progress_percent;
           }
         });
-      },
-      onClose: () => {
-        options?.events?.progress?.(100);
       }
     });
   } catch (err) {

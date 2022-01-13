@@ -73,6 +73,7 @@ export async function installGit(session: Session, artifact: InstallArtifactInfo
   // url
   // commit id (if passed)
   // options of recursive espidf, full
+  options.events?.progress?.(0);
   await git(
     session,
     session.parseUri(install.location),
@@ -80,31 +81,37 @@ export async function installGit(session: Session, artifact: InstallArtifactInfo
     {events: options.events, commit: install.commit, recurse: install.recurse, full: install.full, subdirectory: install.subdirectory});
 
   if (install.espidf) {
-    await installEspIdf(artifact);
+    await installEspIdf(artifact, install.subdirectory);
   }
+  options.events?.progress?.(100);
 }
 
-async function installEspIdf(artifact: InstallArtifactInfo) {
+async function installEspIdf(artifact: InstallArtifactInfo, subdirectory?: string) {
   // create the .espressif folder for the espressif installation
   await artifact.targetLocation.createDirectory('.espressif');
+
+  const directoryLocation = `${artifact.targetLocation.fsPath.toString()}/${subdirectory ? subdirectory : ''}`;
+
   // TODO: look into making sure idf_tools.py updates the system's python installation
   // with the required modules.
   const options: ProcessEnvOptions = {
     env: {
       ...process.env,
-      IDF_PATH: `${artifact.targetLocation.fsPath.toString()}/esp-idf`,
+      IDF_PATH: directoryLocation,
       IDF_TOOLS_PATH: `${artifact.targetLocation.fsPath.toString()}/.espressif`
     }
   };
 
-  const esp_idf = `${artifact.targetLocation.fsPath.toString()}/esp-idf`;
+  const command = [
+    `python.exe ${directoryLocation}/tools/idf_tools.py`, 'install --targets=all',
+    `&& python.exe ${directoryLocation}/tools/idf_tools.py install-python-env`];
 
-  const command = 'python.exe';
-  const args = [`${esp_idf}/tools/idf_tools.py`, 'install', 'install-python-env'];
+  await exec_cmd.execute_shell(
+    command.toString().replaceAll(',', ' '),
+    undefined,
+    options);
 
-  await exec_cmd.execute_command(command, args, undefined, options);
-
-  log('installing espidf commands post-git are not implemented');
+  log('installing espidf commands post-git is implemented, but post activation of the necessary esp-idf path / environment variables is not.');
 }
 
 async function acquireInstallArtifactFile(session: Session, targetFile: string, locations: Array<string>, options: AcquireOptions, install: Verifiable) {
