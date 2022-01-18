@@ -37,7 +37,7 @@ export function cmdlineToArray(text: string, result: Array<string> = [], matcher
 
 export function execute(command: string, cmdlineargs: Array<string>, options: ExecOptions = {}): Promise<ExecResult> {
   return new Promise((resolve, reject) => {
-    const cp = spawn(command, cmdlineargs, { ...options, stdio: 'pipe' });
+    const cp = spawn(command, cmdlineargs.filter(each => each), { ...options, stdio: 'pipe' });
     if (options.onCreate) {
       options.onCreate(cp);
     }

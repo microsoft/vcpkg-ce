@@ -4,9 +4,8 @@
 import { fail } from 'assert';
 import { resolve } from 'path';
 import { MetadataFile } from '../amf/metadata-file';
-import { AcquireEvents } from '../fs/acquire';
-import { UnpackEvents } from '../fs/archive';
 import { i } from '../i18n';
+import { InstallEvents } from '../interfaces/events';
 import { Registries } from '../registries/registries';
 import { Session } from '../session';
 import { linq } from '../util/linq';
@@ -101,7 +100,7 @@ export class Artifact extends ArtifactBase {
     return `${this.registryUri.toString()}::${this.id}::${this.version}`;
   }
 
-  async install(options: { events?: Partial<UnpackEvents & AcquireEvents>, force?: boolean, allLanguages?: boolean, language?: string, activation: Activation }): Promise<boolean> {
+  async install(activation: Activation, events: Partial<InstallEvents>, options: { force?: boolean, allLanguages?: boolean, language?: string }): Promise<boolean> {
 
     // is it installed?
     if (await this.isInstalled && !options.force) {
@@ -143,13 +142,12 @@ export class Artifact extends ArtifactBase {
         continue;
       }
 
-      const target = { name: this.id, targetLocation: this.targetLocation };
       const installer = this.session.artifactInstaller(installInfo);
       if (!installer) {
         fail(i`Unknown installer type ${installInfo!.installerKind}`);
       }
 
-      await installer(this.session, target, installInfo, options);
+      await installer(this.session, activation, this.id, this.targetLocation, installInfo, events, options);
 
     }
 

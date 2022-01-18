@@ -121,10 +121,10 @@ export class ApplyVsManCommand extends Command {
     const repoRoot = session.fileSystem.file(this.repoRoot.requiredValue);
     log(i`Downloading channel manifest from ${channelUriStr}`);
     const channelUriUri = session.parseUri(channelUriStr);
-    const channelFile = await acquireArtifactFile(session, [channelUriUri], 'channel.chman');
+    const channelFile = await acquireArtifactFile(session, [channelUriUri], 'channel.chman', {});
     const vsManPayload = parseVsManFromChannel(await channelFile.readUTF8());
     log(i`Downloading Visual Studio manifest version ${vsManPayload.version} (${vsManPayload.url})`);
-    const vsManUri = await acquireArtifactFile(session, [session.parseUri(vsManPayload.url)], vsManPayload.fileName);
+    const vsManUri = await acquireArtifactFile(session, [session.parseUri(vsManPayload.url)], vsManPayload.fileName, {});
     const vsManLookup = new VsManDatabase(await vsManUri.readUTF8());
     let totalProcessed = 0;
     for (const inputPath of this.inputs) {
