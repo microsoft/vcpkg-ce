@@ -21,7 +21,7 @@ export type Selection = [Artifact, ID, VersionRange]
 
 export class ArtifactMap extends Map<UID, Selection>{
   get artifacts() {
-    return linq.values(this).select(([artifact, id, range]) => artifact);
+    return [...linq.values(this).select(([artifact, id, range]) => artifact)].sort((a, b) => (b.metadata.info.priority || 0) - (a.metadata.info.priority || 0));
   }
 }
 
@@ -68,6 +68,21 @@ class ArtifactBase {
         }
       }
     }
+
+    // special case for git
+    if (!artifacts.has('microsoft:tools/git')) {
+      // check if anyone needs git and add it if it isn't there
+      for (const each of this.applicableDemands.installer) {
+        if (each.installerKind === 'git') {
+          const [reg, id, art] = await this.registries.getArtifact('microsoft:tools/git', '*') || [];
+          if (art) {
+            artifacts.set('microsoft:tools/git', [art, 'microsoft:tools/git', '*']);
+            break;
+          }
+        }
+      }
+    }
+
     return artifacts;
   }
 
