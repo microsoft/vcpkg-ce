@@ -12,7 +12,7 @@ import { Uri } from '../util/uri';
 export async function installGit(session: Session, activation: Activation, name: string, targetLocation: Uri, install: GitInstaller, events: Partial<InstallEvents>, options: Partial<InstallOptions & CloneOptions & CloneSettings>): Promise<void> {
   // clone the uri
   // save it to the cache
-  const gitPath = activation.tools.get('git');
+  const gitPath = activation.tools.get('GIT');
   if (!gitPath) {
     throw new Error(i`Git is not installed`);
   }
@@ -20,28 +20,28 @@ export async function installGit(session: Session, activation: Activation, name:
   const repo = session.parseUri(install.location);
   const targetDirectory = targetLocation.join(options.subdirectory ?? '');
 
-  const gitTool = new Git(gitPath, activation.environmentBlock, targetDirectory);
+  const gitTool = new Git(session, gitPath, activation.environmentBlock, targetDirectory);
 
   await gitTool.clone(repo, events, {
-    recursive: options.recurse,
-    depth: options.full ? undefined : 1,
+    recursive: install.recurse,
+    depth: install.full ? undefined : 1,
   });
 
-  if (options.commit) {
-    if (options.full) {
+  if (install.commit) {
+    if (install.full) {
       await gitTool.reset(events, {
-        recursive: options.recurse,
+        commit: install.commit,
         hard: true
       });
     }
     else {
       await gitTool.fetch('origin', events, {
-        commit: options.commit,
-        recursive: options.recurse,
-        depth: options.full ? undefined : 1
+        commit: install.commit,
+        recursive: install.recurse,
+        depth: install.full ? undefined : 1
       });
       await gitTool.checkout(events, {
-        commit: options.commit
+        commit: install.commit
       });
     }
   }

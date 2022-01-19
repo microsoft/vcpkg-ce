@@ -119,6 +119,7 @@ export class Artifact extends ArtifactBase {
 
     // is it installed?
     if (await this.isInstalled && !options.force) {
+      await this.loadActivationSettings(activation);
       return false;
     }
 

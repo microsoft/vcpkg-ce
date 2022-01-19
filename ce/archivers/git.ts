@@ -2,9 +2,10 @@
 // Licensed under the MIT License.
 
 import { InstallEvents } from '../interfaces/events';
+import { Session } from '../session';
 import { Credentials } from '../util/credentials';
 import { execute } from '../util/exec-cmd';
-import { Uri } from '../util/uri';
+import { isFilePath, Uri } from '../util/uri';
 
 export interface CloneOptions {
   force?: boolean;
@@ -13,11 +14,13 @@ export interface CloneOptions {
 
 /** @internal */
 export class Git {
+  #session: Session;
   #toolPath: string;
   #targetFolder: string;
   #environment: NodeJS.ProcessEnv;
 
-  constructor(toolPath: string, environment: NodeJS.ProcessEnv, targetFolder: Uri) {
+  constructor(session: Session, toolPath: string, environment: NodeJS.ProcessEnv, targetFolder: Uri) {
+    this.#session = session;
     this.#toolPath = toolPath;
     this.#targetFolder = targetFolder.fsPath;
     this.#environment = environment;
@@ -32,7 +35,7 @@ export class Git {
    *  a gaurantee that the clone did what we expected.
    */
   async clone(repo: Uri, events: Partial<InstallEvents>, options: { recursive?: boolean, depth?: number } = {}) {
-    const remote = await repo.isFile() ? repo.fsPath : repo.toString();
+    const remote = await isFilePath(repo) ? repo.fsPath : repo.toString();
 
     const result = await execute(this.#toolPath, [
       'clone',
@@ -45,11 +48,12 @@ export class Git {
       env: this.#environment,
       onStdErrData: (chunk) => {
         // generate progress events
+        // this.#session.channels.debug(chunk.toString());
         const regex = /\s([0-9]*?)%/;
-        chunk.toString().split('\n').forEach((line: string) => {
+        chunk.toString().split(/^/gim).map((x: string) => x.trim()).filter((each: any) => each).forEach((line: string) => {
           const match_array = line.match(regex);
           if (match_array !== null) {
-            events.heartbeat?.(line);
+            events.heartbeat?.(line.trim());
           }
         });
       }
@@ -79,7 +83,9 @@ export class Git {
       options.commit ? options.commit : '',
       options.recursive ? '--recurse-submodules' : '',
       options.depth ? `--depth=${options.depth}` : ''
-    ]);
+    ], {
+      env: this.#environment
+    });
 
     if (result.code) {
       return false;
@@ -102,7 +108,9 @@ export class Git {
       this.#targetFolder,
       'checkout',
       options.commit ? options.commit : ''
-    ]);
+    ], {
+      env: this.#environment
+    });
 
     if (result.code) {
       return false;
@@ -118,13 +126,13 @@ export class Git {
    * @returns Boolean representing whether the execution was completed without error, this is not necessarily
    *  a gaurantee that the reset did what we expected.
    */
-  async reset(events: Partial<InstallEvents>, options: { recursive? : boolean, hard?: boolean } = {}) {
+  async reset(events: Partial<InstallEvents>, options: { commit?: string, hard?: boolean } = {}) {
     const result = await execute(this.#toolPath, [
       '-C',
       this.#targetFolder,
       'reset',
-      options.hard ? '--hard' : '',
-      options.recursive ? '--recurse-submodules' : ''
+      options.commit ? options.commit : '',
+      options.hard ? '--hard' : ''
     ], {
       env: this.#environment
     });

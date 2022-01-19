@@ -63,6 +63,7 @@ export async function installArtifacts(session: Session, artifacts: Iterable<Art
   });
   let dl: SingleBar | undefined;
   let p: SingleBar | undefined;
+  let spinnerValue = 0;
 
   for (const artifact of artifacts) {
     const id = artifact.id;
@@ -115,6 +116,12 @@ export async function installArtifacts(session: Session, artifacts: Iterable<Art
             }
             p.update(percent);
           }
+        },
+        heartbeat: (text: string) => {
+          if (!p) {
+            p = bar.create(3, 0, { action: i`working`, name: artifactIdentity(registryName, id), current: '' });
+          }
+          p?.update((spinnerValue++) % 4, { action: i`working`, name: artifactIdentity(registryName, id), current: text });
         }
       }, options || {});
       // remember what was actually installed

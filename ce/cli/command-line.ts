@@ -93,7 +93,7 @@ export class CommandLine {
       this.switches['vcpkg-root']?.[0] ||
       this.switches['vcpkg_root']?.[0] ||
       process.env['VCPKG_ROOT'] ||
-      join(process.env['HOME'] || tmpdir(), '.vcpkg')));
+      join(process.env['HOME'] || process.env['USERPROFILE'] || tmpdir(), '.vcpkg')));
   }
 
   get force() {
