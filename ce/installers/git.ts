@@ -31,6 +31,7 @@ export async function installGit(session: Session, activation: Activation, name:
     if (install.full) {
       await gitTool.reset(events, {
         commit: install.commit,
+        recurse: install.recurse,
         hard: true
       });
     }

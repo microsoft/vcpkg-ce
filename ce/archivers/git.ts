@@ -126,12 +126,13 @@ export class Git {
    * @returns Boolean representing whether the execution was completed without error, this is not necessarily
    *  a gaurantee that the reset did what we expected.
    */
-  async reset(events: Partial<InstallEvents>, options: { commit?: string, hard?: boolean } = {}) {
+  async reset(events: Partial<InstallEvents>, options: { commit?: string, recurse?: boolean, hard?: boolean } = {}) {
     const result = await execute(this.#toolPath, [
       '-C',
       this.#targetFolder,
       'reset',
       options.commit ? options.commit : '',
+      options.recurse ? '--recurse-submodules' : '',
       options.hard ? '--hard' : ''
     ], {
       env: this.#environment
