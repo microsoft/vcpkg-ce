@@ -137,9 +137,14 @@ async function main() {
 
     await session.writePostscript();
   } catch (e) {
+    // in --debug mode we want to see the stack trace(s).
     if (commandline.debug && e instanceof Error) {
-      console.log(e.stack);
+      log(e.stack);
+      if (e instanceof AggregateError) {
+        e.errors.forEach(each => log(each.stack));
+      }
     }
+
     error(e);
     return process.exitCode = 1;
   } finally {

@@ -19,7 +19,7 @@ export class Activation {
       defines: Object.fromEntries(this.defines),
       locations: Object.fromEntries([... this.locations.entries()].map(([k, v]) => [k, v.fsPath])),
       properties: Object.fromEntries([... this.properties.entries()].map(([k, v]) => [k, v.join(',')])),
-      environment: Object.fromEntries([... this.environment.entries()].map(([k, v]) => [k, v.join(' ')])),
+      environment: { ...process.env, ...Object.fromEntries([... this.environment.entries()].map(([k, v]) => [k, v.join(' ')])) },
       tools: Object.fromEntries(this.tools),
       paths: Object.fromEntries([...this.paths.entries()].map(([k, v]) => [k, v.map(each => each.fsPath).join(delimiter)])),
       aliases: Object.fromEntries(this.aliases)

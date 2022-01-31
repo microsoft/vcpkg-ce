@@ -150,7 +150,7 @@ export class DemandBlock extends Entity {
     }
     const q = {
       ... this.#data || {},
-      ... this.#activation?.output || {}
+      ... this.#activation?.output || { environment: process.env }
     };
     const v = <string>(value !== undefined ? value.toString() : '');
 
@@ -169,7 +169,7 @@ export class DemandBlock extends Entity {
       case 'string': {
         const q = {
           ... this.#data || {},
-          ... this.#activation?.output || {}
+          ... this.#activation?.output || { environment: process.env }
         };
         return value.replace(/\$([a-zA-Z.]+)/g, (match, arg) => { return safeEval(arg, q); });
       }

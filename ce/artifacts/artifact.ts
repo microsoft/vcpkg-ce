@@ -127,61 +127,75 @@ export class Artifact extends ArtifactBase {
   }
 
   async install(activation: Activation, events: Partial<InstallEvents>, options: { force?: boolean, allLanguages?: boolean, language?: string }): Promise<boolean> {
-    // is it installed?
-    const applicableDemands = this.applicableDemands;
+    let installing = false;
+    try {
+      // is it installed?
+      const applicableDemands = this.applicableDemands;
 
-    let isFailing = false;
-    for (const error of applicableDemands.errors) {
-      this.session.channels.error(error);
-      isFailing = true;
-    }
-
-    if (isFailing) {
-      throw Error('errors present');
-    }
-
-    // warnings
-    for (const warning of applicableDemands.warnings) {
-      this.session.channels.warning(warning);
-    }
-
-    // messages
-    for (const message of applicableDemands.messages) {
-      this.session.channels.message(message);
-    }
-
-    if (await this.isInstalled && !options.force) {
-      await this.loadActivationSettings(activation);
-      return false;
-    }
-
-    if (options.force) {
-      try {
-        await this.uninstall();
-      } catch {
-        // if a file is locked, it may not get removed. We'll deal with this later.
-      }
-    }
-
-    // ok, let's install this.
-    for (const installInfo of applicableDemands.installer) {
-      if (installInfo.lang && !options.allLanguages && options.language && options.language.toLowerCase() !== installInfo.lang.toLowerCase()) {
-        continue;
+      let isFailing = false;
+      for (const error of applicableDemands.errors) {
+        this.session.channels.error(error);
+        isFailing = true;
       }
 
-      const installer = this.session.artifactInstaller(installInfo);
-      if (!installer) {
-        fail(i`Unknown installer type ${installInfo!.installerKind}`);
+      if (isFailing) {
+        throw Error('errors present');
       }
 
-      await installer(this.session, activation, this.id, this.targetLocation, installInfo, events, options);
+      // warnings
+      for (const warning of applicableDemands.warnings) {
+        this.session.channels.warning(warning);
+      }
 
+      // messages
+      for (const message of applicableDemands.messages) {
+        this.session.channels.message(message);
+      }
+
+      if (await this.isInstalled && !options.force) {
+        await this.loadActivationSettings(activation);
+        return false;
+      }
+      installing = true;
+
+      if (options.force) {
+        try {
+          await this.uninstall();
+        } catch {
+          // if a file is locked, it may not get removed. We'll deal with this later.
+        }
+      }
+
+      // ok, let's install this.
+      for (const installInfo of applicableDemands.installer) {
+        if (installInfo.lang && !options.allLanguages && options.language && options.language.toLowerCase() !== installInfo.lang.toLowerCase()) {
+          continue;
+        }
+
+        const installer = this.session.artifactInstaller(installInfo);
+        if (!installer) {
+          fail(i`Unknown installer type ${installInfo!.installerKind}`);
+        }
+
+        await installer(this.session, activation, this.id, this.targetLocation, installInfo, events, options);
+
+      }
+
+      // after we unpack it, write out the installed manifest
+      await this.writeManifest();
+
+      return true;
+    } catch (err) {
+      if (installing) {
+        // if we started installing, and then had an error, we need to remove the artifact.
+        try {
+          await this.uninstall();
+        } catch {
+          // if a file is locked, it may not get removed. We'll deal with this later.
+        }
+      }
+      throw err;
     }
-
-    // after we unpack it, write out the installed manifest
-    await this.writeManifest();
-
-    return true;
   }
 
   get name() {
