@@ -12,7 +12,6 @@ import { artifactIdentity, artifactReference } from './format';
 import { Table } from './markdown-table';
 import { debug, error, log } from './styling';
 
-
 export async function showArtifacts(artifacts: Iterable<Artifact>, options?: { force?: boolean }) {
   let failing = false;
   const table = new Table(i`Artifact`, i`Version`, i`Status`, i`Dependency`, i`Summary`);
@@ -64,73 +63,72 @@ export async function installArtifacts(session: Session, artifacts: Iterable<Art
   });
   let dl: SingleBar | undefined;
   let p: SingleBar | undefined;
+  let spinnerValue = 0;
 
   for (const artifact of artifacts) {
     const id = artifact.id;
     const registryName = artifact.registryId;
 
     try {
-      const actuallyInstalled = await artifact.install({
-        ...options,
-        activation,
-        events: {
-          verifying: (name, percent) => {
-            if (percent >= 100) {
-              p?.update(percent);
-              p = undefined;
-              return;
+      const actuallyInstalled = await artifact.install(activation, {
+        verifying: (name, percent) => {
+          if (percent >= 100) {
+            p?.update(percent);
+            p = undefined;
+            return;
+          }
+          if (percent) {
+            if (!p) {
+              p = bar.create(100, 0, { action: i`verifying`, name: artifactIdentity(registryName, id), current: name });
             }
-            if (percent) {
-              if (!p) {
-                p = bar.create(100, 0, { action: i`verifying`, name: artifactIdentity(registryName, id), current: name });
-              }
-              p.update(percent);
-            }
-          },
-          download: (name, percent) => {
-            if (percent >= 100) {
-              if (dl) {
-                dl.update(percent);
-              }
-              dl = undefined;
-              return;
-            }
-            if (percent) {
-              if (!dl) {
-                dl = bar.create(100, 0, { action: i`downloading`, name: artifactIdentity(registryName, id), current: name });
-              }
+            p.update(percent);
+          }
+        },
+        download: (name, percent) => {
+          if (percent >= 100) {
+            if (dl) {
               dl.update(percent);
             }
-          },
-          fileProgress: (entry) => {
-            p?.update({ action: i`unpacking`, name: artifactIdentity(registryName, id), current: entry.extractPath });
-          },
-          progress: (percent: number) => {
-            if (percent >= 100) {
-              if (p) {
-                p.update(percent, { action: i`unpacked`, name: artifactIdentity(registryName, id), current: '' });
-              }
-              p = undefined;
-              return;
-            }
-            if (percent) {
-              if (!p) {
-                p = bar.create(100, 0, { action: i`unpacking`, name: artifactIdentity(registryName, id), current: '' });
-              }
-              p.update(percent);
-            }
+            dl = undefined;
+            return;
           }
+          if (percent) {
+            if (!dl) {
+              dl = bar.create(100, 0, { action: i`downloading`, name: artifactIdentity(registryName, id), current: name });
+            }
+            dl.update(percent);
+          }
+        },
+        fileProgress: (entry) => {
+          p?.update({ action: i`unpacking`, name: artifactIdentity(registryName, id), current: entry.extractPath });
+        },
+        progress: (percent: number) => {
+          if (percent >= 100) {
+            if (p) {
+              p.update(percent, { action: i`unpacked`, name: artifactIdentity(registryName, id), current: '' });
+            }
+            p = undefined;
+            return;
+          }
+          if (percent) {
+            if (!p) {
+              p = bar.create(100, 0, { action: i`unpacking`, name: artifactIdentity(registryName, id), current: '' });
+            }
+            p.update(percent);
+          }
+        },
+        heartbeat: (text: string) => {
+          if (!p) {
+            p = bar.create(3, 0, { action: i`working`, name: artifactIdentity(registryName, id), current: '' });
+          }
+          p?.update((spinnerValue++) % 4, { action: i`working`, name: artifactIdentity(registryName, id), current: text });
         }
-      });
+      }, options || {});
       // remember what was actually installed
       installed.set(artifact, actuallyInstalled);
       if (actuallyInstalled) {
         trackAcquire(artifact.id, artifact.version);
       }
-
-      // build the activation context on the fly...
-      await artifact.loadActivationSettings(activation);
-
     } catch (e: any) {
       bar.stop();
       debug(e);

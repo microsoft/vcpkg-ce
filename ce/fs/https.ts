@@ -101,7 +101,9 @@ function setCredentials(headers: Headers | undefined, target: Uri, credentials?:
   return headers;
 }
 
-/** HTTPS Get request, returns a stream  */
+/** HTTPS Get request, returns a stream
+ * @internal
+*/
 export function getStream(location: Uri, options?: { start?: number, end?: number, headers?: Headers, credentials?: Credentials }) {
   let headers: Headers | undefined = options?.headers;
   headers = setRange(headers, options?.start, undefined);

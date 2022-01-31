@@ -8,7 +8,7 @@
       "name": "cli",
       "request": "launch",
       "type": "node",
-      "program": "${workspaceRoot}/cli/dist/main.js",
+      "program": "${workspaceRoot}/ce/dist/main.js",
       "console": "integratedTerminal",
       "skipFiles": [
         "<node_internals>/**"

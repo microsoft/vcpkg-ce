@@ -27,4 +27,7 @@ export interface Info extends Validation {
 
   /** if true, intended to be used only as a dependency; for example, do not show in search results or lists */
   dependencyOnly: boolean;
+
+  /** higher priority artifacts should install earlier */
+  priority?: number;
 }

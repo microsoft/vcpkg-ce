@@ -8,7 +8,7 @@
 
 import { Readable, Transform, TransformCallback } from 'stream';
 import { constants, createInflateRaw } from 'zlib';
-import { ReadHandle } from './filesystem';
+import { ReadHandle } from '../fs/filesystem';
 
 interface ZipParseState {
   window: FileWindowBuffer;

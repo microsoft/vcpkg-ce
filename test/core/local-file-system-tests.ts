@@ -121,9 +121,9 @@ describe('LocalFileSystemTests', () => {
     const tmp = local.tempFolderUri;
     const path = local.rootFolderUri.join('resources', 'small-file.txt');
 
-    strict.equal(await hash(await fs.readStream(path), path, 0, 'sha256'), '9cfed8b9e45f47e735098c399fb523755e4e993ac64d81171c93efbb523a57e6', 'hash should match');
-    strict.equal(await hash(await fs.readStream(path), path, 0, 'sha384'), '8168d029154548a4e1dd5212b722b03d6220f212f8974f6bd45e71715b13945e343c9d1097f8e393db22c8a07d8cf6f6', 'hash should match');
-    strict.equal(await hash(await fs.readStream(path), path, 0, 'sha512'), '1bacd5dd190731b5c3d2a2ad61142b4054137d6adff5fb085543dcdede77e4a1446225ca31b2f4699b0cda4534e91ea372cf8d73816df3577e38700c299eab5e', 'hash should match');
+    strict.equal(await hash(await fs.readStream(path), path, 0, 'sha256', {}), '9cfed8b9e45f47e735098c399fb523755e4e993ac64d81171c93efbb523a57e6', 'hash should match');
+    strict.equal(await hash(await fs.readStream(path), path, 0, 'sha384', {}), '8168d029154548a4e1dd5212b722b03d6220f212f8974f6bd45e71715b13945e343c9d1097f8e393db22c8a07d8cf6f6', 'hash should match');
+    strict.equal(await hash(await fs.readStream(path), path, 0, 'sha512', {}), '1bacd5dd190731b5c3d2a2ad61142b4054137d6adff5fb085543dcdede77e4a1446225ca31b2f4699b0cda4534e91ea372cf8d73816df3577e38700c299eab5e', 'hash should match');
   });
 
   it('reads blocks via open', async () => {

@@ -10,12 +10,12 @@ import { Uri } from './uri';
 // sha256, sha512, sha384
 export type Algorithm = 'sha256' | 'sha384' | 'sha512'
 
-export async function hash(stream: Readable, uri: Uri, size: number, algorithm: 'sha256' | 'sha384' | 'sha512' = 'sha256', options?: { events?: Partial<VerifyEvents> }) {
+export async function hash(stream: Readable, uri: Uri, size: number, algorithm: 'sha256' | 'sha384' | 'sha512' = 'sha256', events: Partial<VerifyEvents>) {
   stream = await stream;
 
   try {
     const p = new ProgressTrackingStream(0, size);
-    p.on('progress', (filePercentage) => options?.events?.verifying?.(uri.fsPath, filePercentage));
+    p.on('progress', (filePercentage) => events.verifying?.(uri.fsPath, filePercentage));
 
     for await (const chunk of stream.pipe(p).pipe(createHash(algorithm)).setEncoding('hex')) {
       // it should be done reading here
@@ -34,5 +34,4 @@ export interface VerifyEvents {
 export interface Hash {
   value?: string;
   algorithm?: 'sha256' | 'sha384' | 'sha512'
-  events?: Partial<VerifyEvents>;
 }

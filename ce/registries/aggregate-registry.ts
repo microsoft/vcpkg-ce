@@ -41,9 +41,8 @@ export class AggregateRegistry extends Registries implements Registry {
         return name;
       }
     }
-
     // worst-case scenario if we don't have a name in the parent context.
-    return `[${registry.location.toString()}]`;
+    return registry.location.scheme === 'file' ? `[${registry.location.fsPath}]` : `[${registry.location.toString()}]`;
   }
 
   async load(force?: boolean): Promise<void> {

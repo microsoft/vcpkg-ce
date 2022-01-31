@@ -5,6 +5,7 @@ import { stream } from 'fast-glob';
 import { lstat, Stats } from 'fs';
 import { delimiter, join, resolve } from 'path';
 import { isMap, isScalar } from 'yaml';
+import { Activation } from '../artifacts/activation';
 import { i } from '../i18n';
 import { ErrorKind } from '../interfaces/error-kind';
 import { AlternativeFulfillment } from '../interfaces/metadata/alternative-fulfillment';
@@ -67,6 +68,15 @@ export class Demands extends EntityMap<YAMLDictionary, DemandBlock> {
 }
 
 export class DemandBlock extends Entity {
+
+  #activation?: Activation;
+  #data?: Record<string, string | number | boolean | undefined>;
+  setActivation(activation?: Activation) {
+    this.#activation = activation;
+  }
+  setData(data: Record<string, string | number | boolean | undefined>) {
+    this.#data = data;
+  }
   get error(): string | undefined { return this.usingAlternative ? this.unless.error : this.asString(this.getMember('error')); }
   set error(value: string | undefined) { this.setMember('error', value); }
 
@@ -132,6 +142,40 @@ export class DemandBlock extends Entity {
       yield* this.install.validate();
     }
   }
+
+
+  override asString(value: any): string | undefined {
+    if (isScalar(value)) {
+      value = value.value;
+    }
+    const q = {
+      ... this.#data || {},
+      ... this.#activation?.output || { environment: process.env }
+    };
+    const v = <string>(value !== undefined ? value.toString() : '');
+
+    return v.replace(/\$([a-zA-Z.]+)/g, (match, arg) => { return safeEval(arg, q); });
+  }
+
+  override asPrimitive(value: any): Primitive | undefined {
+    if (isScalar(value)) {
+      value = value.value;
+    }
+    switch (typeof value) {
+      case 'boolean':
+      case 'number':
+        return value;
+
+      case 'string': {
+        const q = {
+          ... this.#data || {},
+          ... this.#activation?.output || { environment: process.env }
+        };
+        return value.replace(/\$([a-zA-Z.]+)/g, (match, arg) => { return safeEval(arg, q); });
+      }
+    }
+    return undefined;
+  }
 }
 
 /** Expands environment variables in a string */
@@ -186,8 +230,6 @@ export class Unless extends DemandBlock implements AlternativeFulfillment {
 
   readonly from = new Strings(undefined, this, 'from');
   readonly where = new Strings(undefined, this, 'where');
-
-  private data = <any>{};
 
   get run(): string | undefined { return this.asString(this.getMember('run')); }
   set run(value: string | undefined) { this.setMember('run', value); }
@@ -273,7 +315,7 @@ export class Unless extends DemandBlock implements AlternativeFulfillment {
             this.usingAlternative = true;
             // set the data output of the check
             // this is used later to fill in the settings.
-            this.data = filtered;
+            this.setData(filtered);
             return this;
           }
         }
@@ -302,25 +344,4 @@ export class Unless extends DemandBlock implements AlternativeFulfillment {
     return this._install;
   }
 
-  override asString(value: any): string | undefined {
-    if (isScalar(value)) {
-      value = value.value;
-    }
-    return typeof value === 'string' ? this.data.$0 ? value.replace('$0', this.data.$0) : value : undefined;
-  }
-
-  override asPrimitive(value: any): Primitive | undefined {
-    if (isScalar(value)) {
-      value = value.value;
-    }
-    switch (typeof value) {
-      case 'boolean':
-      case 'number':
-        return value;
-
-      case 'string':
-        return this.data.$0 ? value.replace('$0', this.data.$0) : value;
-    }
-    return undefined;
-  }
 }

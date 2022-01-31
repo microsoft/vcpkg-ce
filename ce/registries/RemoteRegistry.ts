@@ -3,9 +3,9 @@
 
 import { strict } from 'assert';
 import { parse } from 'yaml';
+import { ZipUnpacker } from '../archivers/ZipUnpacker';
 import { Registry } from '../artifacts/registry';
 import { acquireArtifactFile } from '../fs/acquire';
-import { ZipUnpacker } from '../fs/archive';
 import { i } from '../i18n';
 import { Session } from '../session';
 import { Uri } from '../util/uri';
@@ -84,7 +84,7 @@ export class RemoteRegistry extends ArtifactRegistry implements Registry {
     const file = await acquireArtifactFile(this.session, [this.location], `${this.safeName}-registry.zip`, {});
     if (await file.exists()) {
       const unpacker = new ZipUnpacker(this.session);
-      await unpacker.unpack(file, this.cacheFolder, { strip: 1 });
+      await unpacker.unpack(file, this.cacheFolder, {}, { strip: 1 });
       await file.delete();
     }
   }

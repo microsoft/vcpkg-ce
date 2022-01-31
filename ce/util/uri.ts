@@ -8,6 +8,7 @@ import { URL } from 'url';
 import { URI } from 'vscode-uri';
 import { UriComponents } from 'vscode-uri/lib/umd/uri';
 import { FileStat, FileSystem, FileType, ReadHandle, WriteStreamOptions } from '../fs/filesystem';
+import { AcquireEvents } from '../interfaces/events';
 import { Algorithm, Hash, hash } from './hash';
 import { decode, encode } from './text';
 
@@ -308,14 +309,14 @@ bad.fragment === '/project1';
   async hash(algorithm?: Algorithm): Promise<string | undefined> {
     if (algorithm) {
 
-      return await hash(await this.fileSystem.readStream(this), this, await this.size(), algorithm);
+      return await hash(await this.fileSystem.readStream(this), this, await this.size(), algorithm, {});
     }
     return undefined;
   }
 
-  async hashValid(matchOptions?: Hash) {
+  async hashValid(events: Partial<AcquireEvents>, matchOptions?: Hash) {
     if (matchOptions?.algorithm && await this.exists()) {
-      return matchOptions.value?.toLowerCase() === await hash(await this.readStream(), this, await this.size(), matchOptions.algorithm, matchOptions);
+      return matchOptions.value?.toLowerCase() === await hash(await this.readStream(), this, await this.size(), matchOptions.algorithm, events);
     }
     return false;
   }

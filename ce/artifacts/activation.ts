@@ -1,3 +1,4 @@
+/* eslint-disable keyword-spacing */
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
@@ -7,7 +8,22 @@ import { linq } from '../util/linq';
 import { Uri } from '../util/uri';
 
 export class Activation {
-  constructor(protected session: Session) {
+  #session: Session;
+  constructor(session: Session) {
+    this.#session = session;
+  }
+
+  /** gets a flattend object representation of the activation */
+  get output() {
+    return {
+      defines: Object.fromEntries(this.defines),
+      locations: Object.fromEntries([... this.locations.entries()].map(([k, v]) => [k, v.fsPath])),
+      properties: Object.fromEntries([... this.properties.entries()].map(([k, v]) => [k, v.join(',')])),
+      environment: { ...process.env, ...Object.fromEntries([... this.environment.entries()].map(([k, v]) => [k, v.join(' ')])) },
+      tools: Object.fromEntries(this.tools),
+      paths: Object.fromEntries([...this.paths.entries()].map(([k, v]) => [k, v.map(each => each.fsPath).join(delimiter)])),
+      aliases: Object.fromEntries(this.aliases)
+    };
   }
 
   /** a collection of #define declarations that would assumably be applied to all compiler calls. */
@@ -16,17 +32,20 @@ export class Activation {
   /** a collection of tool definitions from artifacts (think shell 'aliases')  */
   tools = new Map<string, string>();
 
+  /** Aliases are tools that get exposed to the user as shell aliases */
+  aliases = new Map<string, string>();
+
   /** a collection of 'published locations' from artifacts. useful for msbuild */
   locations = new Map<string, Uri>();
-
-  /** a collection of arbitrary properties from artifacts. useful for msbuild */
-  properties = new Map<string, Array<string>>();
 
   /** a collection of environment variables from artifacts that are intended to be combinined into variables that have PATH delimiters */
   paths = new Map<string, Array<Uri>>();
 
   /** environment variables from artifacts */
   environment = new Map<string, Array<string>>();
+
+  /** a collection of arbitrary properties from artifacts. useful for msbuild */
+  properties = new Map<string, Array<string>>();
 
   get Paths() {
     // return just paths that have contents.
@@ -63,7 +82,7 @@ export class Activation {
 
   /** produces an environment block that can be passed to child processes to leverage dependent artifacts during installtion/activation. */
   get environmentBlock(): NodeJS.ProcessEnv {
-    const result = this.session.environment;
+    const result = this.#session.environment;
 
     // add environment variables
     for (const [k, v] of this.Variables) {

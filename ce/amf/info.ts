@@ -19,6 +19,9 @@ export class Info extends Entity implements IInfo {
   get summary(): string | undefined { return this.asString(this.getMember('summary')); }
   set summary(value: string | undefined) { this.setMember('summary', value); }
 
+  get priority(): number | undefined { return this.asNumber(this.getMember('priority')) || 0; }
+  set priority(value: number | undefined) { this.setMember('priority', value); }
+
   get description(): string | undefined { return this.asString(this.getMember('description')); }
   set description(value: string | undefined) { this.setMember('description', value); }
 

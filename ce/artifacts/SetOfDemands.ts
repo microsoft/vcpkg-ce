@@ -8,6 +8,7 @@ import { parseQuery } from '../mediaquery/media-query';
 import { Session } from '../session';
 import { MultipleInstallsMatched } from '../util/exceptions';
 import { Dictionary, linq } from '../util/linq';
+import { Activation } from './activation';
 
 
 export class SetOfDemands {
@@ -21,6 +22,12 @@ export class SetOfDemands {
         session.channels.debug(`Matching demand query: '${query}'`);
         this._demands.set(query, demands);
       }
+    }
+  }
+
+  setActivation(activation: Activation) {
+    for (const [, demandBlock] of this._demands.entries()) {
+      demandBlock.setActivation(activation);
     }
   }
 

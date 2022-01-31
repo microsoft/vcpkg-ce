@@ -5,6 +5,7 @@ import { strict } from 'assert';
 import { pipeline as origPipeline } from 'stream';
 import { promisify } from 'util';
 import { i } from '../i18n';
+import { AcquireEvents } from '../interfaces/events';
 import { Session } from '../session';
 import { Credentials } from '../util/credentials';
 import { ExtendedEmitter } from '../util/events';
@@ -12,7 +13,7 @@ import { RemoteFileUnavailable } from '../util/exceptions';
 import { Algorithm, Hash } from '../util/hash';
 import { Uri } from '../util/uri';
 import { get, getStream, RemoteFile, resolveRedirect } from './https';
-import { Progress, ProgressTrackingStream } from './streams';
+import { ProgressTrackingStream } from './streams';
 
 const pipeline = promisify(origPipeline);
 
@@ -23,16 +24,9 @@ export interface AcquireOptions extends Hash {
   /** force a redownload even if it's in cache */
   force?: boolean;
   credentials?: Credentials;
-  events?: Partial<AcquireEvents>
 }
 
-export interface AcquireEvents extends Progress {
-  download(file: string, percent: number): void;
-  verifying(file: string, percent: number): void;
-  complete(): void;
-}
-
-export async function acquireArtifactFile(session: Session, uris: Array<Uri>, outputFilename: string, options?: AcquireOptions) {
+export async function acquireArtifactFile(session: Session, uris: Array<Uri>, outputFilename: string, events: Partial<AcquireEvents>, options?: AcquireOptions) {
   await session.cache.createDirectory();
   const outputFile = session.cache.join(outputFilename);
   session.channels.debug(`Acquire file '${outputFilename}' from [${uris.map(each => each.toString()).join(',')}]`);
@@ -44,7 +38,7 @@ export async function acquireArtifactFile(session: Session, uris: Array<Uri>, ou
     if (await outputFile.isFile()) {
       session.channels.debug(`There is an output file already, verifying: ${outputFile.fsPath}`);
 
-      if (await outputFile.hashValid(options)) {
+      if (await outputFile.hashValid(events, options)) {
         session.channels.debug(`Cached file matched hash: ${outputFile.fsPath}`);
         return outputFile;
       }
@@ -59,7 +53,7 @@ export async function acquireArtifactFile(session: Session, uris: Array<Uri>, ou
       if (options?.algorithm && options?.value) {
         // we have a hash.
         // is it valid?
-        if (await uri.hashValid(options)) {
+        if (await uri.hashValid(events, options)) {
           session.channels.debug(`Local file matched hash: ${uri.fsPath}`);
           return uri;
         }
@@ -81,13 +75,13 @@ export async function acquireArtifactFile(session: Session, uris: Array<Uri>, ou
     throw new RemoteFileUnavailable(uris);
   }
 
-  return https(session, webUris, outputFilename, options);
+  return https(session, webUris, outputFilename, events, options);
 }
 
 /** */
-async function https(session: Session, uris: Array<Uri>, outputFilename: string, options?: AcquireOptions) {
+async function https(session: Session, uris: Array<Uri>, outputFilename: string, events: Partial<AcquireEvents>, options?: AcquireOptions) {
   const ee = new ExtendedEmitter<AcquireEvents>();
-  ee.subscribe(options?.events);
+  ee.subscribe(events);
   session.channels.debug(`Attempting to download file '${outputFilename}' from [${uris.map(each => each.toString()).join(',')}]`);
 
   let resumeAtOffset = 0;
@@ -110,7 +104,7 @@ async function https(session: Session, uris: Array<Uri>, outputFilename: string,
     session.channels.debug(`Acquire '${outputFilename}': local file exists`);
     if (options?.algorithm) {
       // does it match a hash that we have?
-      if (await outputFile.hashValid(options)) {
+      if (await outputFile.hashValid(events, options)) {
         session.channels.debug(`Acquire '${outputFilename}': local file hash matches metdata`);
         // yes it does. let's just return done.
         return outputFile;
@@ -147,7 +141,7 @@ async function https(session: Session, uris: Array<Uri>, outputFilename: string,
           const algorithm = <Algorithm>(await locations.algorithm);
           const value = await locations.hash;
           session.channels.debug(`Acquire '${outputFilename}': remote alg/hash: '${algorithm}'/'${value}`);
-          if (algorithm && value && outputFile.hashValid({ algorithm, value, ...options })) {
+          if (algorithm && value && outputFile.hashValid(events, { algorithm, value, ...options })) {
             session.channels.debug(`Acquire '${outputFilename}': on disk file hash matches the server hash`);
             // so *we* don't have the hash, but ... if the server has a hash, we could see if what we have is what they have?
             // it does match what the server has.
@@ -224,7 +218,7 @@ async function https(session: Session, uris: Array<Uri>, outputFilename: string,
   if (options?.algorithm) {
     session.channels.debug(`Acquire '${outputFilename}': checking downloaded file hash`);
     // does it match the hash that we have?
-    if (!await outputFile.hashValid(options)) {
+    if (!await outputFile.hashValid(events, options)) {
       await outputFile.delete();
       throw new Error(i`Downloaded file '${outputFile.fsPath}' did not have the correct hash (${options.algorithm}: ${options.value}) `);
     }
@@ -249,12 +243,7 @@ export async function resolveNugetUrl(session: Session, pkg: string) {
   return url;
 }
 
-export async function nuget(session: Session, pkg: string, outputFilename: string, options?: AcquireOptions): Promise<Uri> {
-  return https(session, [await resolveNugetUrl(session, pkg)], outputFilename, options);
+export async function acquireNugetFile(session: Session, pkg: string, outputFilename: string, events: Partial<AcquireEvents>, options?: AcquireOptions): Promise<Uri> {
+  return https(session, [await resolveNugetUrl(session, pkg)], outputFilename, events, options);
 }
 
-/** @internal */
-export async function git(session: Session, repo: Uri, progress: Progress, options?: AcquireOptions): Promise<void> {
-  // clone the uri
-  // save it to the cache
-}

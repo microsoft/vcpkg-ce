@@ -6,17 +6,19 @@ import { delimiter } from 'path';
 import { MetadataFile } from './amf/metadata-file';
 import { Activation } from './artifacts/activation';
 import { Artifact, InstalledArtifact } from './artifacts/artifact';
-import { InstallArtifactInfo, installNuGet, installUnTar, installUnZip } from './artifacts/installer-impl';
 import { Registry } from './artifacts/registry';
 import { undo } from './constants';
-import { AcquireEvents } from './fs/acquire';
-import { UnpackEvents } from './fs/archive';
 import { FileSystem, FileType } from './fs/filesystem';
 import { HttpsFileSystem } from './fs/http-filesystem';
 import { LocalFileSystem } from './fs/local-filesystem';
 import { schemeOf, UnifiedFileSystem } from './fs/unified-filesystem';
 import { VsixLocalFilesystem } from './fs/vsix-local-filesystem';
 import { i } from './i18n';
+import { installGit } from './installers/git';
+import { installNuGet } from './installers/nuget';
+import { installUnTar } from './installers/untar';
+import { installUnZip } from './installers/unzip';
+import { InstallEvents, InstallOptions } from './interfaces/events';
 import { Installer } from './interfaces/metadata/installers/Installer';
 import { AggregateRegistry } from './registries/aggregate-registry';
 import { LocalRegistry } from './registries/LocalRegistry';
@@ -29,7 +31,16 @@ import { Queue } from './util/promise';
 import { isFilePath, Uri } from './util/uri';
 import { isYAML } from './yaml/yaml';
 
-type InstallerTool<T extends Installer = any> = (session: Session, artifact: InstallArtifactInfo, install: T, options: { activation: Activation, events?: Partial<UnpackEvents & AcquireEvents> }) => Promise<void>
+/** The definition for an installer tool function */
+type InstallerTool<T extends Installer = any> = (
+  session: Session,
+  activation: Activation,
+  name: string,
+  targetLocation: Uri,
+  install: T,
+  events: Partial<InstallEvents>,
+  options: Partial<InstallOptions>
+) => Promise<void>
 
 const defaultConfig =
   `{
@@ -88,7 +99,8 @@ export class Session {
   private installers = new Map<string, InstallerTool>([
     ['nuget', installNuGet],
     ['unzip', installUnZip],
-    ['untar', installUnTar]
+    ['untar', installUnTar],
+    ['git', installGit]
   ]);
 
   readonly defaultRegistry: AggregateRegistry;

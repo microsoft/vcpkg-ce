@@ -4,14 +4,14 @@
 import { fail } from 'assert';
 import { resolve } from 'path';
 import { MetadataFile } from '../amf/metadata-file';
-import { AcquireEvents } from '../fs/acquire';
-import { UnpackEvents } from '../fs/archive';
 import { i } from '../i18n';
+import { InstallEvents } from '../interfaces/events';
 import { Registries } from '../registries/registries';
 import { Session } from '../session';
 import { linq } from '../util/linq';
 import { Uri } from '../util/uri';
 import { Activation } from './activation';
+import { Registry } from './registry';
 import { SetOfDemands } from './SetOfDemands';
 
 export type Selections = Map<string, string>;
@@ -22,7 +22,7 @@ export type Selection = [Artifact, ID, VersionRange]
 
 export class ArtifactMap extends Map<UID, Selection>{
   get artifacts() {
-    return linq.values(this).select(([artifact, id, range]) => artifact);
+    return [...linq.values(this).select(([artifact, id, range]) => artifact)].sort((a, b) => (b.metadata.info.priority || 0) - (a.metadata.info.priority || 0));
   }
 }
 
@@ -51,15 +51,25 @@ class ArtifactBase {
 
   async resolveDependencies(artifacts = new ArtifactMap(), recurse = true) {
     // find the dependencies and add them to the set
+
+    let dependency: [Registry, string, Artifact] | undefined;
     for (const [id, version] of linq.entries(this.applicableDemands.requires)) {
+      dependency = undefined;
       if (id.indexOf(':') === -1) {
-        throw new Error(`Dependency '${id}' version '${version.raw}' does not specify the registry.`);
+        if (this.metadata.registry) {
+          // let's assume the dependency is in the same registry as the artifact
+          const [registry, b, artifacts] = (await this.metadata.registry.search(this.registries, { idOrShortName: id, version: version.raw }))[0];
+          dependency = [registry, b, artifacts[0]];
+          if (!dependency) {
+            throw new Error(`Dependency '${id}' version '${version.raw}' does not specify the registry.`);
+          }
+        }
       }
-      const dep = await this.registries.getArtifact(id, version.raw);
-      if (!dep) {
-        throw new Error(`Unable to resolve dependency ${id}/${version}`);
+      dependency = dependency || await this.registries.getArtifact(id, version.raw);
+      if (!dependency) {
+        throw new Error(`Unable to resolve dependency ${id}: ${version}`);
       }
-      const artifact = dep[2];
+      const artifact = dependency[2];
       if (!artifacts.has(artifact.uniqueId)) {
         artifacts.set(artifact.uniqueId, [artifact, id, version.raw || '*']);
 
@@ -69,6 +79,21 @@ class ArtifactBase {
         }
       }
     }
+
+    // special case for git
+    if (!artifacts.has('microsoft:tools/git')) {
+      // check if anyone needs git and add it if it isn't there
+      for (const each of this.applicableDemands.installer) {
+        if (each.installerKind === 'git') {
+          const [reg, id, art] = await this.registries.getArtifact('microsoft:tools/git', '*') || [];
+          if (art) {
+            artifacts.set('microsoft:tools/git', [art, 'microsoft:tools/git', '*']);
+            break;
+          }
+        }
+      }
+    }
+
     return artifacts;
   }
 
@@ -101,62 +126,76 @@ export class Artifact extends ArtifactBase {
     return `${this.registryUri.toString()}::${this.id}::${this.version}`;
   }
 
-  async install(options: { events?: Partial<UnpackEvents & AcquireEvents>, force?: boolean, allLanguages?: boolean, language?: string, activation: Activation }): Promise<boolean> {
+  async install(activation: Activation, events: Partial<InstallEvents>, options: { force?: boolean, allLanguages?: boolean, language?: string }): Promise<boolean> {
+    let installing = false;
+    try {
+      // is it installed?
+      const applicableDemands = this.applicableDemands;
 
-    // is it installed?
-    if (await this.isInstalled && !options.force) {
-      return false;
-    }
-
-    if (options.force) {
-      try {
-        await this.uninstall();
-      } catch {
-        // if a file is locked, it may not get removed. We'll deal with this later.
-      }
-    }
-    const applicableDemands = this.applicableDemands;
-
-    let isFailing = false;
-    for (const error of applicableDemands.errors) {
-      this.session.channels.error(error);
-      isFailing = true;
-    }
-
-    if (isFailing) {
-      throw Error('errors present');
-    }
-
-    // warnings
-    for (const warning of applicableDemands.warnings) {
-      this.session.channels.warning(warning);
-    }
-
-    // messages
-    for (const message of applicableDemands.messages) {
-      this.session.channels.message(message);
-    }
-
-    // ok, let's install this.
-    for (const installInfo of applicableDemands.installer) {
-      if (installInfo.lang && !options.allLanguages && options.language && options.language.toLowerCase() !== installInfo.lang.toLowerCase()) {
-        continue;
+      let isFailing = false;
+      for (const error of applicableDemands.errors) {
+        this.session.channels.error(error);
+        isFailing = true;
       }
 
-      const target = { name: this.id, targetLocation: this.targetLocation };
-      const installer = this.session.artifactInstaller(installInfo);
-      if (!installer) {
-        fail(i`Unknown installer type ${installInfo!.installerKind}`);
+      if (isFailing) {
+        throw Error('errors present');
       }
 
-      await installer(this.session, target, installInfo, options);
+      // warnings
+      for (const warning of applicableDemands.warnings) {
+        this.session.channels.warning(warning);
+      }
 
+      // messages
+      for (const message of applicableDemands.messages) {
+        this.session.channels.message(message);
+      }
+
+      if (await this.isInstalled && !options.force) {
+        await this.loadActivationSettings(activation);
+        return false;
+      }
+      installing = true;
+
+      if (options.force) {
+        try {
+          await this.uninstall();
+        } catch {
+          // if a file is locked, it may not get removed. We'll deal with this later.
+        }
+      }
+
+      // ok, let's install this.
+      for (const installInfo of applicableDemands.installer) {
+        if (installInfo.lang && !options.allLanguages && options.language && options.language.toLowerCase() !== installInfo.lang.toLowerCase()) {
+          continue;
+        }
+
+        const installer = this.session.artifactInstaller(installInfo);
+        if (!installer) {
+          fail(i`Unknown installer type ${installInfo!.installerKind}`);
+        }
+
+        await installer(this.session, activation, this.id, this.targetLocation, installInfo, events, options);
+
+      }
+
+      // after we unpack it, write out the installed manifest
+      await this.writeManifest();
+
+      return true;
+    } catch (err) {
+      if (installing) {
+        // if we started installing, and then had an error, we need to remove the artifact.
+        try {
+          await this.uninstall();
+        } catch {
+          // if a file is locked, it may not get removed. We'll deal with this later.
+        }
+      }
+      throw err;
     }
-
-    // after we unpack it, write out the installed manifest
-    await this.writeManifest();
-
-    return true;
   }
 
   get name() {
@@ -267,13 +306,15 @@ export class Artifact extends ArtifactBase {
   }
 
   async sanitizeAndValidatePath(path: string) {
-    try {
-      const loc = this.session.fileSystem.file(resolve(path));
-      if (await loc.exists()) {
-        return loc;
+    if (!path.startsWith('.')) {
+      try {
+        const loc = this.session.fileSystem.file(resolve(path));
+        if (await loc.exists()) {
+          return loc;
+        }
+      } catch {
+        // no worries, treat it like a relative path.
       }
-    } catch {
-      // no worries, treat it like a relative path.
     }
     const loc = this.targetLocation.join(sanitizePath(path));
     if (await loc.exists()) {
