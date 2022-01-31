@@ -8,8 +8,13 @@
       "name": "cli",
       "request": "launch",
       "type": "node",
-      "program": "${workspaceRoot}/cli/dist/main.js",
+      "program": "${workspaceRoot}/ce/dist/main.js",
       "console": "integratedTerminal",
+      "cwd": "C:\\tmp\\vcpkg\\test\\VcpkgPrototype\\MySolution",
+      "args": [
+        "activate",
+        "--target:x64"
+      ],
       "skipFiles": [
         "<node_internals>/**"
       ],

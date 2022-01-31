@@ -1,3 +1,4 @@
+/* eslint-disable keyword-spacing */
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 
@@ -12,23 +13,39 @@ export class Activation {
     this.#session = session;
   }
 
+  /** gets a flattend object representation of the activation */
+  get output() {
+    return {
+      defines: Object.fromEntries(this.defines),
+      locations: Object.fromEntries([... this.locations.entries()].map(([k, v]) => [k, v.fsPath])),
+      properties: Object.fromEntries([... this.properties.entries()].map(([k, v]) => [k, v.join(',')])),
+      environment: Object.fromEntries([... this.environment.entries()].map(([k, v]) => [k, v.join(' ')])),
+      tools: Object.fromEntries(this.tools),
+      paths: Object.fromEntries([...this.paths.entries()].map(([k, v]) => [k, v.map(each => each.fsPath).join(delimiter)])),
+      aliases: Object.fromEntries(this.aliases)
+    };
+  }
+
   /** a collection of #define declarations that would assumably be applied to all compiler calls. */
   defines = new Map<string, string>();
 
   /** a collection of tool definitions from artifacts (think shell 'aliases')  */
   tools = new Map<string, string>();
 
+  /** Aliases are tools that get exposed to the user as shell aliases */
+  aliases = new Map<string, string>();
+
   /** a collection of 'published locations' from artifacts. useful for msbuild */
   locations = new Map<string, Uri>();
-
-  /** a collection of arbitrary properties from artifacts. useful for msbuild */
-  properties = new Map<string, Array<string>>();
 
   /** a collection of environment variables from artifacts that are intended to be combinined into variables that have PATH delimiters */
   paths = new Map<string, Array<Uri>>();
 
   /** environment variables from artifacts */
   environment = new Map<string, Array<string>>();
+
+  /** a collection of arbitrary properties from artifacts. useful for msbuild */
+  properties = new Map<string, Array<string>>();
 
   get Paths() {
     // return just paths that have contents.

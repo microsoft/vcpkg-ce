@@ -4,6 +4,8 @@
 
 import { extname } from 'path';
 import { Document, isMap, LineCounter, parseDocument, YAMLMap } from 'yaml';
+import { Activation } from '../artifacts/activation';
+import { Registry } from '../artifacts/registry';
 import { i } from '../i18n';
 import { ErrorKind } from '../interfaces/error-kind';
 import { Profile } from '../interfaces/metadata/metadata-format';
@@ -14,21 +16,18 @@ import { BaseMap } from '../yaml/BaseMap';
 import { toYAML } from '../yaml/yaml';
 import { Yaml, YAMLDictionary } from '../yaml/yaml-types';
 import { Contacts } from './contact';
-import { Demands, Unless } from './demands';
+import { DemandBlock, Demands } from './demands';
 import { DocumentContext } from './document-context';
 import { GlobalSettings } from './global-settings';
 import { Info } from './info';
-import { Installs } from './installer';
 import { Registries } from './registries';
-import { Requires } from './Requires';
-import { Settings } from './settings';
 
 
 export class MetadataFile extends BaseMap implements Profile {
   readonly context: DocumentContext;
   session!: Session;
 
-  private constructor(protected document: Document.Parsed, public readonly filename: string, public lineCounter: LineCounter) {
+  private constructor(protected document: Document.Parsed, public readonly filename: string, public lineCounter: LineCounter, public readonly registry: Registry | undefined) {
     super(<YAMLMap<string, any>><any>document.contents);
     this.context = <DocumentContext>{
       filename,
@@ -43,17 +42,17 @@ export class MetadataFile extends BaseMap implements Profile {
     return this;
   }
 
-  static async parseMetadata(uri: Uri, session: Session): Promise<MetadataFile> {
-    return MetadataFile.parseConfiguration(uri.path, await uri.readUTF8(), session);
+  static async parseMetadata(uri: Uri, session: Session, registry?: Registry): Promise<MetadataFile> {
+    return MetadataFile.parseConfiguration(uri.path, await uri.readUTF8(), session, registry);
   }
 
-  static async parseConfiguration(filename: string, content: string, session: Session): Promise<MetadataFile> {
+  static async parseConfiguration(filename: string, content: string, session: Session, registry?: Registry): Promise<MetadataFile> {
     const lc = new LineCounter();
     if (!content || content === 'null') {
       content = '{\n}';
     }
     const doc = parseDocument(content, { prettyErrors: false, lineCounter: lc, strict: true });
-    return new MetadataFile(doc, filename, lc).init(session);
+    return new MetadataFile(doc, filename, lc, registry).init(session);
   }
 
   info = new Info(undefined, this, 'info');
@@ -62,20 +61,27 @@ export class MetadataFile extends BaseMap implements Profile {
   registries = new Registries(undefined, this, 'registries');
   globalSettings = new GlobalSettings(undefined, this, 'global');
 
-  get error(): string | undefined { return this.asString(this.getMember('error')); }
-  set error(value: string | undefined) { this.setMember('error', value); }
+  // rather than re-implement it, use encapsulatiob with a demand block
+  private demandBlock = new DemandBlock(this.node, undefined);
 
-  get warning(): string | undefined { return this.asString(this.getMember('warning')); }
-  set warning(value: string | undefined) { this.setMember('warning', value); }
+  get error(): string | undefined { return this.demandBlock.error; }
+  set error(value: string | undefined) { this.demandBlock.error = value; }
 
-  get message(): string | undefined { return this.asString(this.getMember('message')); }
-  set message(value: string | undefined) { this.setMember('message', value); }
+  get warning(): string | undefined { return this.demandBlock.warning; }
+  set warning(value: string | undefined) { this.demandBlock.warning = value; }
 
-  seeAlso = new Requires(undefined, this, 'seeAlso');
-  requires = new Requires(undefined, this, 'requires');
-  settings = new Settings(undefined, this, 'settings');
-  install = new Installs(undefined, this, 'install');
-  unless = new Unless(undefined, this, 'unless');
+  get message(): string | undefined { return this.demandBlock.message; }
+  set message(value: string | undefined) { this.demandBlock.message = value; }
+
+  get seeAlso() { return this.demandBlock.seeAlso; }
+  get requires() { return this.demandBlock.requires; }
+  get settings() { return this.demandBlock.settings; }
+  get install() { return this.demandBlock.install; }
+  get unless() { return this.demandBlock.unless; }
+
+  setActivation(activation: Activation): void {
+    this.demandBlock.setActivation(activation);
+  }
 
   conditionalDemands = new Demands(undefined, this, 'demands');
 

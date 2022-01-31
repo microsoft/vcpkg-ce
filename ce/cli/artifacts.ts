@@ -129,10 +129,6 @@ export async function installArtifacts(session: Session, artifacts: Iterable<Art
       if (actuallyInstalled) {
         trackAcquire(artifact.id, artifact.version);
       }
-
-      // build the activation context on the fly...
-      await artifact.loadActivationSettings(activation);
-
     } catch (e: any) {
       bar.stop();
       debug(e);

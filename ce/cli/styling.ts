@@ -2,11 +2,13 @@
 // Licensed under the MIT License.
 
 import { blue, cyan, gray, green, red, white, yellow } from 'chalk';
-import * as markdown from 'marked';
 import * as renderer from 'marked-terminal';
 import { argv } from 'process';
 import { Session } from '../session';
 import { CommandLine } from './command-line';
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const marked = require('marked');
 
 function formatTime(t: number) {
   return (
@@ -16,7 +18,7 @@ function formatTime(t: number) {
 }
 
 // setup markdown renderer
-markdown.setOptions({
+marked.setOptions({
   renderer: new renderer({
     tab: 2,
     emoji: true,
@@ -50,7 +52,7 @@ export function indent(text: string | Array<string>): string | Array<string> {
 
 function md(text = '', session?: Session): string {
   if (text) {
-    text = markdown(`${text}`.replace(/\\\./g, '\\\\.')); // work around md messing up paths with .\ in them.
+    text = marked.marked(`${text}`.replace(/\\\./g, '\\\\.')); // work around md messing up paths with .\ in them.
 
     // rewrite file:// urls to be locl filesystem urls.
     return (!!text && !!session) ? text.replace(/(file:\/\/\S*)/g, (s, a) => yellow.dim(session.parseUri(a).fsPath)) : text;

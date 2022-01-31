@@ -11,6 +11,7 @@ import { Session } from '../session';
 import { linq } from '../util/linq';
 import { Uri } from '../util/uri';
 import { Activation } from './activation';
+import { Registry } from './registry';
 import { SetOfDemands } from './SetOfDemands';
 
 export type Selections = Map<string, string>;
@@ -50,15 +51,25 @@ class ArtifactBase {
 
   async resolveDependencies(artifacts = new ArtifactMap(), recurse = true) {
     // find the dependencies and add them to the set
+
+    let dependency: [Registry, string, Artifact] | undefined;
     for (const [id, version] of linq.entries(this.applicableDemands.requires)) {
+      dependency = undefined;
       if (id.indexOf(':') === -1) {
-        throw new Error(`Dependency '${id}' version '${version.raw}' does not specify the registry.`);
+        if (this.metadata.registry) {
+          // let's assume the dependency is in the same registry as the artifact
+          const [registry, b, artifacts] = (await this.metadata.registry.search(this.registries, { idOrShortName: id, version: version.raw }))[0];
+          dependency = [registry, b, artifacts[0]];
+          if (!dependency) {
+            throw new Error(`Dependency '${id}' version '${version.raw}' does not specify the registry.`);
+          }
+        }
       }
-      const dep = await this.registries.getArtifact(id, version.raw);
-      if (!dep) {
-        throw new Error(`Unable to resolve dependency ${id}/${version}`);
+      dependency = dependency || await this.registries.getArtifact(id, version.raw);
+      if (!dependency) {
+        throw new Error(`Unable to resolve dependency ${id}: ${version}`);
       }
-      const artifact = dep[2];
+      const artifact = dependency[2];
       if (!artifacts.has(artifact.uniqueId)) {
         artifacts.set(artifact.uniqueId, [artifact, id, version.raw || '*']);
 
@@ -116,20 +127,7 @@ export class Artifact extends ArtifactBase {
   }
 
   async install(activation: Activation, events: Partial<InstallEvents>, options: { force?: boolean, allLanguages?: boolean, language?: string }): Promise<boolean> {
-
     // is it installed?
-    if (await this.isInstalled && !options.force) {
-      await this.loadActivationSettings(activation);
-      return false;
-    }
-
-    if (options.force) {
-      try {
-        await this.uninstall();
-      } catch {
-        // if a file is locked, it may not get removed. We'll deal with this later.
-      }
-    }
     const applicableDemands = this.applicableDemands;
 
     let isFailing = false;
@@ -150,6 +148,19 @@ export class Artifact extends ArtifactBase {
     // messages
     for (const message of applicableDemands.messages) {
       this.session.channels.message(message);
+    }
+
+    if (await this.isInstalled && !options.force) {
+      await this.loadActivationSettings(activation);
+      return false;
+    }
+
+    if (options.force) {
+      try {
+        await this.uninstall();
+      } catch {
+        // if a file is locked, it may not get removed. We'll deal with this later.
+      }
     }
 
     // ok, let's install this.
@@ -281,13 +292,15 @@ export class Artifact extends ArtifactBase {
   }
 
   async sanitizeAndValidatePath(path: string) {
-    try {
-      const loc = this.session.fileSystem.file(resolve(path));
-      if (await loc.exists()) {
-        return loc;
+    if (!path.startsWith('.')) {
+      try {
+        const loc = this.session.fileSystem.file(resolve(path));
+        if (await loc.exists()) {
+          return loc;
+        }
+      } catch {
+        // no worries, treat it like a relative path.
       }
-    } catch {
-      // no worries, treat it like a relative path.
     }
     const loc = this.targetLocation.join(sanitizePath(path));
     if (await loc.exists()) {
