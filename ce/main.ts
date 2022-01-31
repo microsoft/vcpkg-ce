@@ -137,7 +137,9 @@ async function main() {
 
     await session.writePostscript();
   } catch (e) {
-    console.log((<Error>e).stack);
+    if (commandline.debug && e instanceof Error) {
+      console.log(e.stack);
+    }
     error(e);
     return process.exitCode = 1;
   } finally {

@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 
+import { Activation } from '../../artifacts/activation';
 import { Session } from '../../session';
 import { Dictionary, Sequence } from '../collections';
 import { Validation } from '../validation';
@@ -51,5 +52,6 @@ export interface Demands extends Validation {
   unless: AlternativeFulfillment;
 
   init(session: Session): Promise<Demands>;
+  setActivation(activation: Activation): void;
 }
 
