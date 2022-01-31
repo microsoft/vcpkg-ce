@@ -10,11 +10,6 @@
       "type": "node",
       "program": "${workspaceRoot}/ce/dist/main.js",
       "console": "integratedTerminal",
-      "cwd": "C:\\tmp\\vcpkg\\test\\VcpkgPrototype\\MySolution",
-      "args": [
-        "activate",
-        "--target:x64"
-      ],
       "skipFiles": [
         "<node_internals>/**"
       ],
