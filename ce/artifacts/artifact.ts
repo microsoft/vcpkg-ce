@@ -131,6 +131,7 @@ export class Artifact extends ArtifactBase {
     try {
       // is it installed?
       const applicableDemands = this.applicableDemands;
+      applicableDemands.setActivation(activation);
 
       let isFailing = false;
       for (const error of applicableDemands.errors) {
