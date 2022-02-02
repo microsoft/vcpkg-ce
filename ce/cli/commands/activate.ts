@@ -7,6 +7,7 @@ import { Command } from '../command';
 import { projectFile } from '../format';
 import { activateProject } from '../project';
 import { debug, error } from '../styling';
+import { MSBuildProps } from '../switches/msbuild-props';
 import { Project } from '../switches/project';
 import { WhatIf } from '../switches/whatIf';
 
@@ -15,8 +16,9 @@ export class ActivateCommand extends Command {
   readonly aliases = [];
   seeAlso = [];
   argumentsHelp = [];
-  whatIf = new WhatIf(this)
+  whatIf = new WhatIf(this);
   project: Project = new Project(this);
+  msbuildProps = new MSBuildProps(this);
 
   get summary() {
     return i`Activates the tools required for a project`;

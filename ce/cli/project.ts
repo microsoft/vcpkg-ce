@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 import { ArtifactMap, ProjectManifest } from '../artifacts/artifact';
+import { generate_msbuild } from '../generators/msbuild-generator';
 import { i } from '../i18n';
 import { trackActivation } from '../insights';
 import { session } from '../main';
@@ -11,16 +12,29 @@ import { blank } from './constants';
 import { projectFile } from './format';
 import { error, log } from './styling';
 
+class ActivationOptions {
+  force?: boolean;
+  allLanguages?: boolean;
+  language?: string;
+  msbuildProps?: Uri;
+}
+
 export async function openProject(location: Uri): Promise<ProjectManifest> {
   // load the project
   return new ProjectManifest(session, await session.openManifest(location));
 }
 
-export async function activate(artifacts: ArtifactMap, options?: { force?: boolean, allLanguages?: boolean, language?: string }) {
+export async function activate(artifacts: ArtifactMap, options?: ActivationOptions) {
   // install the items in the project
   const [success, , activation] = await installArtifacts(session, artifacts.artifacts, options);
 
   if (success) {
+    // create an MSBuild props file if indicated by the user
+    const msbuildProps = options?.msbuildProps;
+    if (msbuildProps) {
+      await msbuildProps.writeUTF8(generate_msbuild(activation.Locations, activation.Properties));
+    }
+
     // activate all the tools in the project
     await session.setActivationInPostscript(activation);
   }
@@ -28,7 +42,7 @@ export async function activate(artifacts: ArtifactMap, options?: { force?: boole
   return success;
 }
 
-export async function activateProject(project: ProjectManifest, options?: { force?: boolean, allLanguages?: boolean, language?: string }) {
+export async function activateProject(project: ProjectManifest, options?: ActivationOptions) {
   // track what got installed
   const artifacts = await project.resolveDependencies();
 

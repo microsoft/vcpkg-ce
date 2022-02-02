@@ -70,6 +70,7 @@
     "marked": "4.0.12",
     "cli-progress": "3.9.0",
     "applicationinsights": "2.1.9",
-    "fast-glob": "3.2.7"
+    "fast-glob": "3.2.7",
+    "xml-writer": "~1.7.0"
   }
 }
