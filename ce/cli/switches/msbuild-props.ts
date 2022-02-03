@@ -9,6 +9,7 @@ import { Switch } from '../switch';
 
 export class MSBuildProps extends Switch {
   switch = 'msbuild-props';
+  override multipleAllowed = false;
   get help() {
     return [
       i`Full path to the file in which MSBuild properties will be written.`

@@ -18,7 +18,7 @@ export class ActivateCommand extends Command {
   argumentsHelp = [];
   whatIf = new WhatIf(this);
   project: Project = new Project(this);
-  msbuildProps = new MSBuildProps(this);
+  msbuildProps: MSBuildProps = new MSBuildProps(this);
 
   get summary() {
     return i`Activates the tools required for a project`;
@@ -41,6 +41,11 @@ export class ActivateCommand extends Command {
     debug(i`Deactivating project ${projectFile(projectManifest.metadata.context.file)}`);
     await session.deactivate();
 
-    return await activateProject(projectManifest, this.commandLine);
+    return await activateProject(projectManifest, {
+      force: this.commandLine.force,
+      allLanguages: this.commandLine.allLanguages,
+      language: this.commandLine.language,
+      msbuildProps: await this.msbuildProps.value
+    });
   }
 }
