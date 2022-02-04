@@ -128,7 +128,7 @@ export abstract class ReadHandle {
 class RangeReadHandle extends ReadHandle {
 
   pos = 0;
-  readHandle?: ReadHandle
+  readHandle?: ReadHandle;
 
   constructor(readHandle: ReadHandle, private start: number, private length: number) {
     super();

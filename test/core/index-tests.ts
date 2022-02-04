@@ -25,7 +25,7 @@ interface TestData {
 /** An Index implementation for TestData */
 class MyIndex extends IndexSchema<TestData, MyIndex> {
 
-  id = new StringKey(this, (i) => i.info.id)
+  id = new StringKey(this, (i) => i.info.id);
   version = new SemverKey(this, (i) => new SemVer(i.info.version));
   description = new StringKey(this, (i) => i.info.description);
 

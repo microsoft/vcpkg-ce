@@ -12,7 +12,7 @@ export class DeleteCommand extends Command {
   readonly aliases = ['uninstall'];
   seeAlso = [];
   argumentsHelp = [];
-  version = new Version(this)
+  version = new Version(this);
   whatIf = new WhatIf(this);
 
   get summary() {

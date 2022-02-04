@@ -19,7 +19,7 @@ export class AddCommand extends Command {
   seeAlso = [];
   argumentsHelp = [];
 
-  version = new Version(this)
+  version = new Version(this);
   project: Project = new Project(this);
   whatIf = new WhatIf(this);
   registrySwitch = new Registry(this);

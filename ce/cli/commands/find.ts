@@ -19,7 +19,7 @@ export class FindCommand extends Command {
   seeAlso = [];
   argumentsHelp = [];
 
-  version = new Version(this)
+  version = new Version(this);
   registrySwitch = new Registry(this);
   project = new Project(this);
 
