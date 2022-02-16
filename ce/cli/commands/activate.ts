@@ -15,7 +15,7 @@ export class ActivateCommand extends Command {
   readonly aliases = [];
   seeAlso = [];
   argumentsHelp = [];
-  whatIf = new WhatIf(this)
+  whatIf = new WhatIf(this);
   project: Project = new Project(this);
 
   get summary() {
