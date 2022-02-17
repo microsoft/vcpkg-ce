@@ -59,13 +59,13 @@ class Template {
     version: rndSemver(),
     summary: sentence(),
     description: paragraph(),
-  }
+  };
 
-  contacts = randomContacts()
+  contacts = randomContacts();
   install = {
     unzip: `https://${randomHost()}/${sentence().replace(/ /g, '/')}.zip`,
     sha256: createHash('sha256').update(sentence()).digest('hex'),
-  }
+  };
 }
 
 describe('StandardRegistry Tests', () => {
