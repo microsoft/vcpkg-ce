@@ -38,10 +38,7 @@ export /** @internal */ abstract class Yaml<ThisType extends Node = Node> {
       return this.parent.asString(value);
     }
 
-    if (isScalar(value)) {
-      value = value.value;
-    }
-    return typeof value === 'string' ? value : undefined;
+    return value === undefined ? undefined : (isScalar(value) ? value.value : value).toString();
   }
 
   /**

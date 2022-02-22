@@ -93,10 +93,8 @@ class ArtifactBase {
         }
       }
     }
-
     return artifacts;
   }
-
 }
 
 export class Artifact extends ArtifactBase {
@@ -179,7 +177,6 @@ export class Artifact extends ArtifactBase {
         }
 
         await installer(this.session, activation, this.id, this.targetLocation, installInfo, events, options);
-
       }
 
       // after we unpack it, write out the installed manifest
@@ -211,7 +208,6 @@ export class Artifact extends ArtifactBase {
   async uninstall() {
     await this.targetLocation.delete({ recursive: true, useTrash: false });
   }
-
 
   async loadActivationSettings(activation: Activation) {
     // construct paths (bin, lib, include, etc.)

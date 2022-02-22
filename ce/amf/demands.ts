@@ -12,6 +12,7 @@ import { AlternativeFulfillment } from '../interfaces/metadata/alternative-fulfi
 import { ValidationError } from '../interfaces/validation-error';
 import { parseQuery } from '../mediaquery/media-query';
 import { Session } from '../session';
+import { Evaluator } from '../util/evaluator';
 import { cmdlineToArray, execute } from '../util/exec-cmd';
 import { createSandbox } from '../util/safeEval';
 import { Entity } from '../yaml/Entity';
@@ -68,14 +69,24 @@ export class Demands extends EntityMap<YAMLDictionary, DemandBlock> {
 }
 
 export class DemandBlock extends Entity {
-
+  #environment: Record<string, string | number | boolean | undefined> = {};
   #activation?: Activation;
-  #data?: Record<string, string | number | boolean | undefined>;
+  #data?: Record<string, string>;
+
   setActivation(activation?: Activation) {
     this.#activation = activation;
   }
-  setData(data: Record<string, string | number | boolean | undefined>) {
+
+  setData(data: Record<string, string>) {
     this.#data = data;
+  }
+
+  setEnvironment(env: Record<string, string | number | boolean | undefined>) {
+    this.#environment = env;
+  }
+
+  protected get evaluationBlock() {
+    return new Evaluator(this.#data || {}, this.#environment, this.#activation?.output || {});
   }
   get error(): string | undefined { return this.usingAlternative ? this.unless.error : this.asString(this.getMember('error')); }
   set error(value: string | undefined) { this.setMember('error', value); }
@@ -125,6 +136,7 @@ export class DemandBlock extends Entity {
    * when this runs, if the alternative is met, the rest of the demand is redirected to the alternative.
    */
   async init(session: Session): Promise<DemandBlock> {
+    this.#environment = session.environment;
     if (this.usingAlternative === undefined && this.has('unless')) {
       await this.unless.init(session);
       this.usingAlternative = this.unless.usingAlternative;
@@ -143,21 +155,17 @@ export class DemandBlock extends Entity {
     }
   }
 
-
   override asString(value: any): string | undefined {
-    if (isScalar(value)) {
-      value = value.value;
+    if (value === undefined) {
+      return value;
     }
-    const q = {
-      ... this.#data || {},
-      ... this.#activation?.output || { environment: process.env }
-    };
-    const v = <string>(value !== undefined ? value.toString() : '');
-
-    return v.replace(/\$([a-zA-Z.]+)/g, (match, arg) => { return safeEval(arg, q); });
+    return this.evaluationBlock.evaluate(isScalar(value) ? value.value : value);
   }
 
   override asPrimitive(value: any): Primitive | undefined {
+    if (value === undefined) {
+      return value;
+    }
     if (isScalar(value)) {
       value = value.value;
     }
@@ -167,26 +175,22 @@ export class DemandBlock extends Entity {
         return value;
 
       case 'string': {
-        const q = {
-          ... this.#data || {},
-          ... this.#activation?.output || { environment: process.env }
-        };
-        return value.replace(/\$([a-zA-Z.]+)/g, (match, arg) => { return safeEval(arg, q); });
+        return this.evaluationBlock.evaluate(value);
       }
     }
     return undefined;
   }
 }
 
-/** Expands environment variables in a string */
-function expandEnvironment(environment: NodeJS.ProcessEnv, value: string) {
+/** Expands string variables in a string */
+function expandStrings(sandboxData: Record<string, any>, value: string) {
   let n = undefined;
 
   // allow $PATH instead of ${PATH} -- simplifies YAML strings
-  value = value.replace(/\$(\w+)/g, '${$1}');
+  value = value.replace(/\$([a-zA-Z0-9.]+)/g, '${$1}');
 
   const parts = value.split(/(\${\S+?})/g).filter(each => each).map((each, i) => {
-    const v = each.replace(/^\${(.*)}$/, (m, match) => environment[match] ?? each);
+    const v = each.replace(/^\${(.*)}$/, (m, match) => safeEval(match, sandboxData) ?? each);
 
     if (v.indexOf(delimiter) !== -1) {
       n = i;
@@ -254,13 +258,13 @@ export class Unless extends DemandBlock implements AlternativeFulfillment {
   }
 
   override async init(session: Session): Promise<Unless> {
-
+    this.setEnvironment(session.environment);
     if (this.usingAlternative === undefined) {
       this.usingAlternative = false;
       if (this.from.length > 0 && this.where.length > 0) {
         // we're doing some kind of check.
-        const locations = [...this.from].map(each => expandEnvironment(session.environment, each).split(delimiter)).flat();
-        const binaries = [...this.where].map(each => expandEnvironment(session.environment, each));
+        const locations = [...this.from].map(each => expandStrings(this.evaluationBlock, each).split(delimiter)).flat();
+        const binaries = [...this.where].map(each => expandStrings(this.evaluationBlock, each));
 
         const search = locations.map(location => binaries.map(binary => join(location, binary).replace(/\\/g, '/'))).flat();
 
@@ -295,6 +299,7 @@ export class Unless extends DemandBlock implements AlternativeFulfillment {
         })) {
           // we found something that looks promising.
           let filtered = <any>{ $0: item };
+          this.setData(filtered);
           if (this.run) {
 
             const commandline = cmdlineToArray(this.run.replace('$0', item.toString()));
