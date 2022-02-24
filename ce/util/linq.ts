@@ -37,6 +37,7 @@ export interface IterableWithLinq<T> extends Iterable<T> {
   forEach(action: (each: T) => void): void;
   aggregate<A, R>(accumulator: (current: T | A, next: T) => A, seed?: T | A, resultAction?: (result?: T | A) => A | R): T | A | R | undefined;
   toArray(): Array<T>;
+  toObject<V, U>(selector: (each: T) => [V, U]): Record<string, U>;
   results(): Promise<void>;
   toDictionary<TValue>(keySelector: (each: T) => string, selector: (each: T) => TValue): Dictionary<TValue>;
   toMap<TKey, TValue>(keySelector: (each: T) => TKey, selector: (each: T) => TValue): Map<TKey, TValue>;
@@ -74,6 +75,7 @@ function linqify<T>(iterable: Iterable<T> | IterableIterator<T>): IterableWithLi
     selectMany: <any>selectMany.bind(iterable),
     selectNonNullable: <any>selectNonNullable.bind(iterable),
     toArray: <any>toArray.bind(iterable),
+    toObject: <any>toObject.bind(iterable),
     where: <any>where.bind(iterable),
     forEach: <any>forEach.bind(iterable),
     aggregate: <any>aggregate.bind(iterable),
@@ -352,6 +354,14 @@ function toArray<T>(this: Iterable<T>): Array<T> {
   return [...this];
 }
 
+function toObject<T, V>(this: Iterable<T>, selector: (each: T) => [string, V]): Record<string, V> {
+  const result = <Record<string, V>>{};
+  for (const each of this) {
+    const [key, value] = selector(each);
+    result[key] = value;
+  }
+  return result;
+}
 
 async function results<T>(this: Iterable<T>): Promise<void> {
   await Promise.all([...<any>this]);

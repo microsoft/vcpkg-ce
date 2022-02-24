@@ -8,6 +8,7 @@ import { installArtifacts, selectArtifacts, showArtifacts } from '../artifacts';
 import { Command } from '../command';
 import { cmdSwitch } from '../format';
 import { error, log, warning } from '../styling';
+import { MSBuildProps } from '../switches/msbuild-props';
 import { Project } from '../switches/project';
 import { Registry } from '../switches/registry';
 import { Version } from '../switches/version';
@@ -22,6 +23,7 @@ export class UseCommand extends Command {
   whatIf = new WhatIf(this);
   registrySwitch = new Registry(this);
   project = new Project(this);
+  msbuildProps = new MSBuildProps(this);
 
   get summary() {
     return i`Instantly activates an artifact outside of the project`;
@@ -65,6 +67,10 @@ export class UseCommand extends Command {
     if (success) {
       log(i`Activating individual artifacts`);
       await session.setActivationInPostscript(activation, false);
+      const propsFile = this.msbuildProps.value;
+      if (propsFile) {
+        await propsFile.writeUTF8(activation.generateMSBuild(artifactStatus.keys()));
+      }
     } else {
       return false;
     }
