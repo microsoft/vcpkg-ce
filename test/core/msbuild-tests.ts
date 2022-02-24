@@ -3,6 +3,7 @@
 
 import { Activation } from '@microsoft/vcpkg-ce/dist/artifacts/activation';
 import { strict } from 'assert';
+import { platform } from 'os';
 import { SuiteLocal } from './SuiteLocal';
 
 describe('MSBuild Generator', () => {
@@ -26,7 +27,7 @@ describe('MSBuild Generator', () => {
     activation.locations.set('somepath', local.fs.file('c:/tmp'));
     activation.paths.set('include', [local.fs.file('c:/tmp'), local.fs.file('c:/tmp2')]);
 
-    const expected = `<?xml version="1.0" encoding="utf-8"?>
+    const expected = (platform() === 'win32') ? `<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="Locations">
     <somepath>c:\\tmp</somepath>
@@ -41,7 +42,22 @@ describe('MSBuild Generator', () => {
   <PropertyGroup Label="Paths">
     <include>c:\\tmp;c:\\tmp2</include>
   </PropertyGroup>
-</Project>`;
+</Project>` : `<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Locations">
+    <somepath>c:/tmp</somepath>
+  </PropertyGroup>
+  <PropertyGroup Label="Properties">
+    <z>zse&amp;tting</z>
+    <a>ase&lt;tting</a>
+    <c>csetting</c>
+    <b>bsetting</b>
+    <prop>first;seco&gt;nd;third</prop>
+  </PropertyGroup>
+  <PropertyGroup Label="Paths">
+    <include>c:/tmp;c:/tmp2</include>
+  </PropertyGroup>
+</Project>` ;
 
     strict.equal(activation.generateMSBuild([]), expected);
   });
