@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 import { ArtifactMap, ProjectManifest } from '../artifacts/artifact';
-import { generate_msbuild } from '../generators/msbuild-generator';
 import { i } from '../i18n';
 import { trackActivation } from '../insights';
 import { session } from '../main';
@@ -26,13 +25,13 @@ export async function openProject(location: Uri): Promise<ProjectManifest> {
 
 export async function activate(artifacts: ArtifactMap, options?: ActivationOptions) {
   // install the items in the project
-  const [success, , activation] = await installArtifacts(session, artifacts.artifacts, options);
+  const [success, artifactStatus, activation] = await installArtifacts(session, artifacts.artifacts, options);
 
   if (success) {
     // create an MSBuild props file if indicated by the user
-    const msbuildProps = options?.msbuildProps;
-    if (msbuildProps) {
-      await msbuildProps.writeUTF8(generate_msbuild(activation.Locations, activation.Properties));
+    const propsFile = options?.msbuildProps;
+    if (propsFile) {
+      await propsFile.writeUTF8(activation.generateMSBuild(artifactStatus.keys()));
     }
 
     // activate all the tools in the project

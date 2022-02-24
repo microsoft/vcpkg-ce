@@ -102,7 +102,7 @@ class ArtifactBase {
 export class Artifact extends ArtifactBase {
   isPrimary = false;
 
-  constructor(session: Session, metadata: MetadataFile, public shortName: string = '', protected targetLocation: Uri, public readonly registryId: string, public readonly registryUri: Uri) {
+  constructor(session: Session, metadata: MetadataFile, public shortName: string = '', public targetLocation: Uri, public readonly registryId: string, public readonly registryUri: Uri) {
     super(session, metadata);
   }
 
@@ -176,14 +176,12 @@ export class Artifact extends ArtifactBase {
         if (!installer) {
           fail(i`Unknown installer type ${installInfo!.installerKind}`);
         }
-
         await installer(this.session, activation, this.id, this.targetLocation, installInfo, events, options);
-
       }
 
       // after we unpack it, write out the installed manifest
       await this.writeManifest();
-
+      await this.loadActivationSettings(activation);
       return true;
     } catch (err) {
       if (installing) {

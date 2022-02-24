@@ -16,12 +16,8 @@ export class MSBuildProps extends Switch {
     ];
   }
 
-  override get value(): Promise<Uri | undefined> {
+  override get value(): Uri | undefined {
     const v = resolvePath(super.value);
-    if (v) {
-      return Promise.resolve(session.fileSystem.file(v));
-    }
-
-    return Promise.resolve(undefined);
+    return v ? session.fileSystem.file(v) : undefined;
   }
 }
