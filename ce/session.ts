@@ -7,7 +7,7 @@ import { MetadataFile } from './amf/metadata-file';
 import { Activation } from './artifacts/activation';
 import { Artifact, InstalledArtifact } from './artifacts/artifact';
 import { Registry } from './artifacts/registry';
-import { undo } from './constants';
+import { defaultConfig, globalConfigurationFile, postscriptVarible, profileNames, registryIndexFile, undo, vcpkgDownloadFolder } from './constants';
 import { FileSystem, FileType } from './fs/filesystem';
 import { HttpsFileSystem } from './fs/http-filesystem';
 import { LocalFileSystem } from './fs/local-filesystem';
@@ -42,19 +42,7 @@ type InstallerTool<T extends Installer = any> = (
   options: Partial<InstallOptions>
 ) => Promise<void>
 
-const defaultConfig =
-  `{
-  "registries": [
-    {
-      "kind": "artifact",
-      "name": "microsoft",
-      "location": "https://aka.ms/vcpkg-ce-default"
-    }
-  ]
-}
-`;
 
-const profileName = ['vcpkg-configuration.json', 'vcpkg-configuration.yaml', 'environment.yaml', 'environment.yml', 'environment.json'];
 export type Context = { [key: string]: Array<string> | undefined; } & {
   readonly os: string;
   readonly arch: string;
@@ -120,8 +108,8 @@ export class Session {
     this.setupLogging();
 
     this.homeFolder = this.fileSystem.file(settings['homeFolder']!);
-    this.cache = this.environment['VCPKG_DOWNLOADS'] ? this.parseUri(this.environment['VCPKG_DOWNLOADS']) : this.homeFolder.join('downloads');
-    this.globalConfig = this.homeFolder.join('vcpkg-configuration.global.json');
+    this.cache = this.environment[vcpkgDownloadFolder] ? this.parseUri(this.environment[vcpkgDownloadFolder]!) : this.homeFolder.join('downloads');
+    this.globalConfig = this.homeFolder.join(globalConfigurationFile);
 
     this.tmpFolder = this.homeFolder.join('tmp');
     this.installFolder = this.homeFolder.join('artifacts');
@@ -206,7 +194,7 @@ export class Session {
       }
 
       if (await location.isDirectory()) {
-        const index = location.join('index.yaml');
+        const index = location.join(registryIndexFile);
         if (await isIndexFile(index)) {
           return true;
         }
@@ -267,7 +255,7 @@ export class Session {
 
   #postscriptFile?: Uri;
   get postscriptFile() {
-    return this.#postscriptFile || (this.#postscriptFile = this.environment['Z_VCPKG_POSTSCRIPT'] ? this.fileSystem.file(this.environment['Z_VCPKG_POSTSCRIPT']) : undefined);
+    return this.#postscriptFile || (this.#postscriptFile = this.environment[postscriptVarible] ? this.fileSystem.file(this.environment[postscriptVarible]!) : undefined);
   }
 
   async init() {
@@ -326,7 +314,7 @@ export class Session {
 
   async findProjectProfile(startLocation = this.currentDirectory, search = true): Promise<Uri | undefined> {
     let location = startLocation;
-    for (const loc of profileName) {
+    for (const loc of profileNames) {
       const path = location.join(loc);
       if (await this.fileSystem.isFile(path)) {
         return path;

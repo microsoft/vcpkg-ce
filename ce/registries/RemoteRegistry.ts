@@ -5,6 +5,7 @@ import { strict } from 'assert';
 import { parse } from 'yaml';
 import { ZipUnpacker } from '../archivers/ZipUnpacker';
 import { Registry } from '../artifacts/registry';
+import { registryIndexFile } from '../constants';
 import { acquireArtifactFile } from '../fs/acquire';
 import { i } from '../i18n';
 import { Session } from '../session';
@@ -25,7 +26,7 @@ export class RemoteRegistry extends ArtifactRegistry implements Registry {
     strict.ok(location.scheme === 'https', `remote registry location must be an HTTPS uri (${location})`);
     super(session, location);
     this.cacheFolder = session.registryFolder.join(this.localName);
-    this.indexYaml = this.cacheFolder.join('index.yaml');
+    this.indexYaml = this.cacheFolder.join(registryIndexFile);
     this.installationFolder = session.installFolder.join(this.localName);
   }
 

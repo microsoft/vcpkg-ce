@@ -61,7 +61,7 @@ export class Evaluator {
     text = text.replace(/\$\$/g, '\uffff');
 
     // $0 ... $9 -> replace contents with the values from the artifact
-    text = text.replace(/\$([0-9])/g, (match, index) => this.artifact[index] || match);
+    text = text.replace(/\$([0-9])/g, (match, index) => this.artifact[match] || match);
 
     // $<expression> -> expression value
     text = text.replace(/\$([a-zA-Z_.][a-zA-Z0-9_.]*)/g, (match, expression) => {

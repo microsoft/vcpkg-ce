@@ -4,6 +4,7 @@
 import { fail } from 'assert';
 import { resolve } from 'path';
 import { MetadataFile } from '../amf/metadata-file';
+import { gitArtifact, gitUniqueIdPrefix, latestVersion } from '../constants';
 import { i } from '../i18n';
 import { InstallEvents } from '../interfaces/events';
 import { Registries } from '../registries/registries';
@@ -61,17 +62,17 @@ class ArtifactBase {
           const [registry, b, artifacts] = (await this.metadata.registry.search(this.registries, { idOrShortName: id, version: version.raw }))[0];
           dependency = [registry, b, artifacts[0]];
           if (!dependency) {
-            throw new Error(`Dependency '${id}' version '${version.raw}' does not specify the registry.`);
+            throw new Error(i`Dependency '${id}' version '${version.raw}' does not specify the registry.`);
           }
         }
       }
       dependency = dependency || await this.registries.getArtifact(id, version.raw);
       if (!dependency) {
-        throw new Error(`Unable to resolve dependency ${id}: ${version}`);
+        throw new Error(i`Unable to resolve dependency ${id}: ${version.raw}`);
       }
       const artifact = dependency[2];
       if (!artifacts.has(artifact.uniqueId)) {
-        artifacts.set(artifact.uniqueId, [artifact, id, version.raw || '*']);
+        artifacts.set(artifact.uniqueId, [artifact, id, version.raw || latestVersion]);
 
         if (recurse) {
           // process it's dependencies too.
@@ -80,14 +81,14 @@ class ArtifactBase {
       }
     }
 
-    // special case for git
-    if (!artifacts.has('microsoft:tools/git')) {
+
+    if (!linq.startsWith(artifacts, gitUniqueIdPrefix)) {
       // check if anyone needs git and add it if it isn't there
       for (const each of this.applicableDemands.installer) {
         if (each.installerKind === 'git') {
-          const [reg, id, art] = await this.registries.getArtifact('microsoft:tools/git', '*') || [];
+          const [reg, id, art] = await this.registries.getArtifact(gitArtifact, latestVersion) || [];
           if (art) {
-            artifacts.set('microsoft:tools/git', [art, 'microsoft:tools/git', '*']);
+            artifacts.set(gitArtifact, [art, gitArtifact, latestVersion]);
             break;
           }
         }

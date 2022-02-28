@@ -171,7 +171,9 @@ export function values<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T>)
 export const linq = {
   values: _values,
   entries: _entries,
-  keys: _keys
+  keys: _keys,
+  find: _find,
+  startsWith: _startsWith,
 };
 
 /** returns an IterableWithLinq<> for values in the collection
@@ -206,6 +208,18 @@ export function entries<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T>
 function _entries<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T> | undefined | null)>(source: TSrc & (Array<T> | Dictionary<T> | Map<K, T>) | null | undefined): IterableWithLinq<[IndexOf<TSrc>, T]> {
   return <any>linqify(source ? entries(<any>source) : [])
 }
+
+/** returns the first value where the key equals the match value (case-insensitive) */
+function _find<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T> | undefined | null)>(source: TSrc & (Array<T> | Dictionary<T> | Map<K, T>) | null | undefined, match: string): T | undefined {
+  return _entries(source).first(([key,]) => key.toString().localeCompare(match, undefined, { sensitivity: 'base' }) === 0)?.[1];
+}
+
+/** returns the first value where the key starts with the match value (case-insensitive) */
+function _startsWith<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T> | undefined | null)>(source: TSrc & (Array<T> | Dictionary<T> | Map<K, T>) | null | undefined, match: string): T | undefined {
+  match = match.toLowerCase();
+  return _entries(source).first(([key,]) => key.toString().toLowerCase().startsWith(match))?.[1];
+}
+
 
 export function length<T, K>(source?: string | Iterable<T> | Dictionary<T> | Array<T> | Map<K, T> | Set<T>): number {
   if (source) {
