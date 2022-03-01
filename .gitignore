@@ -367,3 +367,5 @@ common/deploy
 /test/**/*.js
 
 .attic/
+binaries/
+layout/
