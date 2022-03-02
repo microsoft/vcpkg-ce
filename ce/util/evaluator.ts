@@ -45,7 +45,7 @@ export class Evaluator {
   private activation: any;
   private host: any;
 
-  constructor(private artifact: Record<string, string>, host: Record<string, any>, activation: Record<string, any>) {
+  constructor(private artifactData: Record<string, string>, host: Record<string, any>, activation: Record<string, any>) {
     this.host = proxifyObject(host);
     this.activation = proxifyObject(activation);
 
@@ -61,7 +61,7 @@ export class Evaluator {
     text = text.replace(/\$\$/g, '\uffff');
 
     // $0 ... $9 -> replace contents with the values from the artifact
-    text = text.replace(/\$([0-9])/g, (match, index) => this.artifact[match] || match);
+    text = text.replace(/\$([0-9])/g, (match, index) => this.artifactData[match] || match);
 
     // $<expression> -> expression value
     text = text.replace(/\$([a-zA-Z_.][a-zA-Z0-9_.]*)/g, (match, expression) => {
