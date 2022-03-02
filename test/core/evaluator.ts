@@ -15,7 +15,6 @@ describe('Evaluator', () => {
 
   after(local.after.bind(local));
 
-
   it('evaluates', () => {
     const activation = new Activation(session);
     activation.environment.set('foo', ['bar']);
