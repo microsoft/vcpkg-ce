@@ -37,6 +37,7 @@ export interface IterableWithLinq<T> extends Iterable<T> {
   forEach(action: (each: T) => void): void;
   aggregate<A, R>(accumulator: (current: T | A, next: T) => A, seed?: T | A, resultAction?: (result?: T | A) => A | R): T | A | R | undefined;
   toArray(): Array<T>;
+  toObject<V, U>(selector: (each: T) => [V, U]): Record<string, U>;
   results(): Promise<void>;
   toDictionary<TValue>(keySelector: (each: T) => string, selector: (each: T) => TValue): Dictionary<TValue>;
   toMap<TKey, TValue>(keySelector: (each: T) => TKey, selector: (each: T) => TValue): Map<TKey, TValue>;
@@ -74,6 +75,7 @@ function linqify<T>(iterable: Iterable<T> | IterableIterator<T>): IterableWithLi
     selectMany: <any>selectMany.bind(iterable),
     selectNonNullable: <any>selectNonNullable.bind(iterable),
     toArray: <any>toArray.bind(iterable),
+    toObject: <any>toObject.bind(iterable),
     where: <any>where.bind(iterable),
     forEach: <any>forEach.bind(iterable),
     aggregate: <any>aggregate.bind(iterable),
@@ -169,7 +171,9 @@ export function values<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T>)
 export const linq = {
   values: _values,
   entries: _entries,
-  keys: _keys
+  keys: _keys,
+  find: _find,
+  startsWith: _startsWith,
 };
 
 /** returns an IterableWithLinq<> for values in the collection
@@ -204,6 +208,18 @@ export function entries<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T>
 function _entries<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T> | undefined | null)>(source: TSrc & (Array<T> | Dictionary<T> | Map<K, T>) | null | undefined): IterableWithLinq<[IndexOf<TSrc>, T]> {
   return <any>linqify(source ? entries(<any>source) : [])
 }
+
+/** returns the first value where the key equals the match value (case-insensitive) */
+function _find<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T> | undefined | null)>(source: TSrc & (Array<T> | Dictionary<T> | Map<K, T>) | null | undefined, match: string): T | undefined {
+  return _entries(source).first(([key,]) => key.toString().localeCompare(match, undefined, { sensitivity: 'base' }) === 0)?.[1];
+}
+
+/** returns the first value where the key starts with the match value (case-insensitive) */
+function _startsWith<K, T, TSrc extends (Array<T> | Dictionary<T> | Map<K, T> | undefined | null)>(source: TSrc & (Array<T> | Dictionary<T> | Map<K, T>) | null | undefined, match: string): T | undefined {
+  match = match.toLowerCase();
+  return _entries(source).first(([key,]) => key.toString().toLowerCase().startsWith(match))?.[1];
+}
+
 
 export function length<T, K>(source?: string | Iterable<T> | Dictionary<T> | Array<T> | Map<K, T> | Set<T>): number {
   if (source) {
@@ -352,6 +368,14 @@ function toArray<T>(this: Iterable<T>): Array<T> {
   return [...this];
 }
 
+function toObject<T, V>(this: Iterable<T>, selector: (each: T) => [string, V]): Record<string, V> {
+  const result = <Record<string, V>>{};
+  for (const each of this) {
+    const [key, value] = selector(each);
+    result[key] = value;
+  }
+  return result;
+}
 
 async function results<T>(this: Iterable<T>): Promise<void> {
   await Promise.all([...<any>this]);

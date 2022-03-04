@@ -15,7 +15,7 @@ export function createSandbox(): <T>(code: string, context?: any) => T {
       for (const key of Object.keys(context)) {
         sandbox[key] = context[key];
       }
-      vm.runInContext(`${response} = ${code}`, sandbox);
+      vm.runInContext(`try {  ${response} = ${code} } catch (e) { ${response} = undefined }`, sandbox);
       for (const key of Object.keys(context)) {
         delete sandbox[key];
       }

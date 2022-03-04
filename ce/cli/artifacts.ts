@@ -81,7 +81,7 @@ export async function installArtifacts(session: Session, artifacts: Iterable<Art
             if (!p) {
               p = bar.create(100, 0, { action: i`verifying`, name: artifactIdentity(registryName, id), current: name });
             }
-            p.update(percent);
+            p?.update(percent);
           }
         },
         download: (name, percent) => {

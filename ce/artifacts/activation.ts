@@ -6,6 +6,8 @@ import { delimiter } from 'path';
 import { Session } from '../session';
 import { linq } from '../util/linq';
 import { Uri } from '../util/uri';
+import { toXml } from '../util/xml';
+import { Artifact } from './artifact';
 
 export class Activation {
   #session: Session;
@@ -24,6 +26,55 @@ export class Activation {
       paths: Object.fromEntries([...this.paths.entries()].map(([k, v]) => [k, v.map(each => each.fsPath).join(delimiter)])),
       aliases: Object.fromEntries(this.aliases)
     };
+  }
+
+  generateMSBuild(artifacts: Iterable<Artifact>): string {
+    const msbuildFile = {
+      Project: {
+        $xmlns: 'http://schemas.microsoft.com/developer/msbuild/2003',
+        PropertyGroup: <Array<Record<string, any>>>[]
+      }
+    };
+
+    if (this.locations.size) {
+      msbuildFile.Project.PropertyGroup.push({ $Label: 'Locations', ...linq.entries(this.locations).toObject(([key, value]) => [key, value.fsPath]) });
+    }
+
+    if (this.properties.size) {
+      msbuildFile.Project.PropertyGroup.push({ $Label: 'Properties', ...linq.entries(this.properties).toObject(([key, value]) => [key, value.join(';')]) });
+    }
+
+    if (this.tools.size) {
+      msbuildFile.Project.PropertyGroup.push({ $Label: 'Tools', ...linq.entries(this.tools).toObject(each => each) });
+    }
+
+    if (this.environment.size) {
+      msbuildFile.Project.PropertyGroup.push({ $Label: 'Environment', ...linq.entries(this.environment).toObject(each => each) });
+    }
+
+    if (this.paths.size) {
+      msbuildFile.Project.PropertyGroup.push({ $Label: 'Paths', ...linq.entries(this.paths).toObject(([key, value]) => [key, value.map(each => each.fsPath).join(';')]) });
+    }
+
+    if (this.defines.size) {
+      msbuildFile.Project.PropertyGroup.push({ $Label: 'Defines', DEFINES: linq.entries(this.defines).select(([key, value]) => `${key}=${value}`).join(';') });
+    }
+
+    if (this.aliases.size) {
+      msbuildFile.Project.PropertyGroup.push({ $Label: 'Aliases', ...linq.entries(this.environment).toObject(each => each) });
+    }
+
+    const propertyGroup = <any>{ $Label: 'Artifacts', Artifacts: { Artifact: [] } };
+
+    for (const artifact of artifacts) {
+      propertyGroup.Artifacts.Artifact.push({ $id: artifact.metadata.info.id, '#text': artifact.targetLocation.fsPath });
+    }
+
+    if (propertyGroup.Artifacts.Artifact.length > 0) {
+      msbuildFile.Project.PropertyGroup.push(propertyGroup);
+    }
+
+    return toXml(msbuildFile);
   }
 
   /** a collection of #define declarations that would assumably be applied to all compiler calls. */

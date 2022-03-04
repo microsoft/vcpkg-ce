@@ -2,6 +2,7 @@
 // Licensed under the MIT License.
 
 import { Registry } from '../../artifacts/registry';
+import { registryIndexFile } from '../../constants';
 import { i } from '../../i18n';
 import { session } from '../../main';
 import { Registries } from '../../registries/registries';
@@ -28,7 +29,7 @@ export class RegenerateCommand extends Command {
 
   get description() {
     return [
-      i`This allows the user to regenerate the index.yaml files for a ${cli} registry.`,
+      i`This allows the user to regenerate the ${registryIndexFile} files for a ${cli} registry.`,
     ];
   }
 
