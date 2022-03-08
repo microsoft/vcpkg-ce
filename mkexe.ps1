@@ -43,6 +43,7 @@ if( -not (get-command -ea 0 pkg)) {
   exit 1
 }
 
+$env:PKG_CACHE_PATH=(resolve-path "$PSScriptRoot\node-pkg-files\")
 $deploy = (resolve "$PSScriptRoot/common/deploy")
 $pkgs = (resolve "$deploy/common/temp/node_modules/.pnpm")
 $layout = (resolve "$PSScriptRoot/layout")
