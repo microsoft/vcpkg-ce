@@ -34,11 +34,11 @@ variables:
     SignType: test
   # This variable will be expanded later and allows us to deploy to the vcpkg-ce repo.
   GIT_SSH_COMMAND: ssh -i "$(githubDeployKey.secureFilePath)"
-  
+
 
 steps:
-  - checkout: none # use a git clone command below. 
-  
+  - checkout: none # use a git clone command below.
+
   - script: mkdir %USERPROFILE%\.ssh && echo * ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEAq2A7hRGmdnm9tUDbO9IDSwBK6TbQa+PXYPCPy6rbTrTtw7PHkccKrpp0yVhp5HdEIcKr6pLlVDBfOLX9QUsyCOV0wzfjIJNlGEYsdlLJizHhbn2mUjvSAHQqZETYP81eFzLQNnPHt4EVVUh7VfDESU84KezmD5QlWpXLmvU31/yMf+Se8xhHTvKSCZIFImWwoG6mbUoWf9nzpIoaSjB+weqqUUmpaaasXVal72J+UX2B+2RPW3RcT0eOzQgqlJL3RKrTJvdsjE3JEAvGq3lGHSZXy28G3skua2SmVi/w4yCE6gbODqnTWlg7+wC604ydGXA8VJiS5ap43JXiUFFAaQ==>>%USERPROFILE%\.ssh\known_hosts
     displayName: Store GitHub public key
 
@@ -69,7 +69,6 @@ steps:
     inputs:
       targetType: F
       targetArgument: $(Pipeline.Workspace)\s
-      optionsUEPATH: '$(Pipeline.Workspace)\s\PolicheckExclusion.xml'
 
   # Build and test the project.
   - task: UseNode@1
@@ -85,7 +84,7 @@ steps:
 
       write-host  Check for linting errors
       rush lint
-      
+
       write-host Update version numbers
       rush set-versions
       node -e "const c = require('./ce/package.json'); p = require('./assets/package.json') ; p.version = c.version; require('fs').writeFileSync('./assets/package.json', JSON.stringify(p,undefined,2));"
@@ -98,8 +97,8 @@ steps:
 
       write-host run the unit tests
       rush test
-      
-    displayName: Build and test 
+
+    displayName: Build and test
 
   # Collect all dependencies. Output will be placed in the ./common/deploy directory.
   - script: rush deploy
@@ -108,7 +107,7 @@ steps:
 
   - task: ComponentGovernanceComponentDetection@0
     displayName: Detect components
-    
+
     inputs:
       ignoreDirectories: vcpkg-ce/common/temp
 
@@ -207,14 +206,14 @@ steps:
     name: githubDeployKey
     inputs:
       secureFile: id_vcpkgce
-    
+
   # GitHub has a large, regularly changing set of IP address, so ignore the
   # hostname and allow anything with the right key.
   # https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/about-githubs-ip-addresses
   # This public key should have the well-known fingerprint documented below.
   # SHA256:nThbg6kXUpJWGl7E1IGOCspRomTxdCARLviKw6E5SY8
   # https://docs.github.com/en/github/authenticating-to-github/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints
-  
+
   # tag every build as a release
   - powershell: |
       $PKG_VERSION=(node -p "require('./ce/package.json').version")
