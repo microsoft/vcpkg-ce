@@ -18,7 +18,6 @@ import { Uri } from '../util/uri';
 import { Registry } from './registry';
 import { SetOfDemands } from './SetOfDemands';
 
-
 export type Selections = Map<string, string>;
 export type UID = string;
 export type ID = string;
@@ -138,18 +137,18 @@ export class Artifact extends ArtifactBase {
       // is it installed?
       const applicableDemands = this.applicableDemands;
 
-      this.session.channels.error(applicableDemands.errors);
+      this.session.channels.error(applicableDemands.errors, this);
 
       if (applicableDemands.errors.length) {
-        throw Error('errors present');
+        throw Error('Error message from Artifact');
       }
 
-      this.session.channels.warning(applicableDemands.warnings);
-      this.session.channels.message(applicableDemands.messages);
+      this.session.channels.warning(applicableDemands.warnings, this);
+      this.session.channels.message(applicableDemands.messages, this);
 
       if (await this.isInstalled && !options.force) {
         if (!await this.loadActivationSettings(events)) {
-          throw new Error('baaaaad');
+          throw new Error(i`Failed during artifact activation`);
         }
         return false;
       }
@@ -179,7 +178,7 @@ export class Artifact extends ArtifactBase {
       // after we unpack it, write out the installed manifest
       await this.writeManifest();
       if (!await this.loadActivationSettings(events)) {
-        throw new Error('baaaaad');
+        throw new Error(i`Failed during artifact activation`);
       }
       return true;
     } catch (err) {
@@ -211,7 +210,7 @@ export class Artifact extends ArtifactBase {
   matchFilesInArtifact(glob: string) {
     const results = match(this.allPaths, glob.trim(), { dot: true, cwd: this.targetLocation.fsPath, unescape: true });
     if (results.length === 0) {
-      this.session.channels.warning(i`Unable to resolve '${glob}' to files in the artifact folder`);
+      this.session.channels.warning(i`Unable to resolve '${glob}' to files in the artifact folder`, this);
       return [];
     }
     return results;
@@ -221,7 +220,7 @@ export class Artifact extends ArtifactBase {
     return text.replace(/\{(.*?)\}/g, (m, e) => {
       const results = this.matchFilesInArtifact(e);
       if (mustBeSingle && results.length > 1) {
-        this.session.channels.warning(i`Glob ${m} resolved to multiple locations. Using first location.`);
+        this.session.channels.warning(i`Glob ${m} resolved to multiple locations. Using first location.`, this);
         return results[0];
       }
       return results.join(delimiter);

@@ -29,8 +29,6 @@ const ignore = new Set<string>(['info', 'contacts', 'error', 'message', 'warning
  * A map of mediaquery to DemandBlock
  */
 export class Demands extends EntityMap<YAMLDictionary, DemandBlock> {
-  protected filteredData = <any>{};
-
   constructor(node?: YAMLDictionary, parent?: Yaml, key?: string) {
     super(DemandBlock, node, parent, key);
   }
@@ -68,7 +66,7 @@ export class Demands extends EntityMap<YAMLDictionary, DemandBlock> {
 }
 
 export class DemandBlock extends Entity {
-  discoveredData = <any>{};
+  discoveredData = <Record<string, string>>{};
 
   get error(): string | undefined { return this.usingAlternative ? this.unless.error : this.asString(this.getMember('error')); }
   set error(value: string | undefined) { this.setMember('error', value); }
@@ -197,7 +195,7 @@ export class DemandBlock extends Entity {
 }
 
 /** filters output and produces a sandbox context object */
-function filter(expression: string, content: string) {
+function filterOutput(expression: string, content: string) {
   const parsed = /^\/(.*)\/(\w*)$/.exec(expression);
   if (parsed) {
     return new RegExp(parsed[1], parsed[2]).exec(content)?.reduce((p, c, i) => { p[`$${i}`] = c; return p; }, <any>{}) ?? {};
@@ -291,8 +289,8 @@ export class Unless extends DemandBlock implements AlternativeFulfillment {
               continue;
             }
 
-            this.discoveredData = filter(this.select || '', result.log) || [];
-            this.discoveredData.$0 = item.toString();
+            this.discoveredData = filterOutput(this.select || '', result.log) || [];
+            this.discoveredData['$0'] = item.toString();
             (<DemandBlock>(this.parent)).discoveredData = this.discoveredData;
 
             // if we have a match expression, let's check it.

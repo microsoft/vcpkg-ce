@@ -25,6 +25,7 @@ export async function showArtifacts(artifacts: Iterable<Artifact>, options?: { f
     table.push(name, artifact.version, options?.force || await artifact.isInstalled ? 'installed' : 'will install', artifact.isPrimary ? ' ' : '*', artifact.metadata.info.summary || '');
   }
   log(table.toString());
+  log();
 
   return !failing;
 }
